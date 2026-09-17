@@ -5,10 +5,10 @@ Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
 ## Day 1 (Thu) — Foundations, no Bedrock yet
 - [ ] AWS Builder Center signup (mandatory to compete)
 - [ ] New/existing AWS account, claim the $100 team credit code
-- [ ] Create the "demo" API Gateway + a trivial backing Lambda (this is the
+- [x] Create the "demo" API Gateway + a trivial backing Lambda (this is the
       resource that gets throttled later — needs to exist first)
-- [ ] Create the three DynamoDB tables (SCHEMA.md)
-- [ ] Write `deploy_heartbeat.py`, wire it as the last step of any deploy
+- [x] Create the three DynamoDB tables (SCHEMA.md)
+- [x] Write `deploy_heartbeat.py`, wire it as the last step of any deploy
 - [ ] Poller Lambda: pull `AWS/ApiGateway` Count via `get_metric_data`,
       compute rolling baseline, log to console (no Bedrock/remediation yet)
 - [ ] EventBridge rule wired to poller, confirmed firing every 1 min
