@@ -69,9 +69,8 @@ SYSTEM_PROMPT = [
             "You are a cloud cost-anomaly classifier protecting serverless workloads.\n"
             "You will be given metrics and context about a spike in API request volume.\n\n"
             "Decision guidelines:\n"
-            "- NORMAL: legitimate traffic growth (e.g., many unique callers, matches a recent deploy or marketing event).\n"
-            "- RUNAWAY: a malfunctioning process or agent loop (e.g., single caller repeating an identical request/payload "
-            "at high frequency, no corresponding deploy or traffic-driving event).\n\n"
+            "- NORMAL: legitimate traffic growth (e.g., many unique callers, high ratio of unique callers to total requests, diverse request payloads, or matches a recent deploy/marketing event). When unique_caller_count is high and request payloads are varied, classify as NORMAL.\n"
+            "- RUNAWAY: a malfunctioning process or agent loop (e.g., single caller or very few callers repeating an identical request/payload at high frequency, no corresponding deploy or traffic-driving event).\n\n"
             "You MUST call the classify_anomaly tool with classification, confidence, and explanation."
         )
     }

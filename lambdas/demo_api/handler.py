@@ -10,13 +10,20 @@ def lambda_handler(event, context):
     """
     rc = event.get("requestContext", {})
     identity = rc.get("identity", {})
-    source_ip = identity.get("sourceIp") or event.get("headers", {}).get("X-Forwarded-For", "unknown")
-    user_agent = identity.get("userAgent") or event.get("headers", {}).get("User-Agent", "unknown")
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+    caller_id = (
+        headers.get("x-caller-id")
+        or headers.get("x-forwarded-for")
+        or identity.get("sourceIp")
+        or "unknown"
+    )
+    user_agent = headers.get("user-agent") or identity.get("userAgent", "unknown")
     body = event.get("body")
 
     print(json.dumps({
         "type": "DEMO_API_REQUEST",
-        "ip": source_ip,
+        "caller": caller_id,
+        "ip": caller_id,
         "userAgent": user_agent,
         "path": event.get("path", "/"),
         "httpMethod": event.get("httpMethod", "GET"),

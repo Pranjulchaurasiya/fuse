@@ -76,12 +76,14 @@ def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 1
                 brace_idx = msg.find("{")
                 if brace_idx != -1:
                     data = json.loads(msg[brace_idx:])
-                    ip = data.get("ip")
-                    if ip and ip != "unknown":
-                        unique_ips.add(ip)
+                    caller = data.get("caller") or data.get("ip")
+                    if caller and caller != "unknown":
+                        unique_ips.add(caller)
                     body = data.get("body")
-                    if body and len(sample_payloads) < 5:
-                        sample_payloads.append(body if isinstance(body, str) else json.dumps(body))
+                    if body:
+                        str_body = body if isinstance(body, str) else json.dumps(body)
+                        if str_body not in sample_payloads and len(sample_payloads) < 5:
+                            sample_payloads.append(str_body)
             except Exception:
                 continue
 
