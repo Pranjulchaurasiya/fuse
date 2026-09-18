@@ -22,10 +22,14 @@ BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-south-1")
 DEFAULT_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-micro-v1:0")
 INCIDENTS_TABLE_NAME = os.environ.get("INCIDENTS_TABLE", "Incidents")
 DEPLOYMENTS_TABLE_NAME = os.environ.get("DEPLOYMENTS_TABLE", "Deployments")
+APPROVAL_QUEUE_TABLE_NAME = os.environ.get("APPROVAL_QUEUE_TABLE", "ApprovalQueue")
+REMEDIATOR_FUNCTION_NAME = os.environ.get("REMEDIATOR_FUNCTION_NAME", "guardrail-remediator")
 
 bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
 dynamodb_resource = boto3.resource("dynamodb", region_name=AWS_REGION)
+lambda_client = boto3.client("lambda", region_name=AWS_REGION)
 incidents_table = dynamodb_resource.Table(INCIDENTS_TABLE_NAME)
+approval_queue_table = dynamodb_resource.Table(APPROVAL_QUEUE_TABLE_NAME)
 
 CLASSIFY_TOOL_SPEC = {
     "tools": [
@@ -122,11 +126,11 @@ def write_incident_record(
     classification: str,
     confidence: float,
     explanation: str,
+    action_taken: str,
     is_fallback: bool,
     model_used: str,
 ):
     """Writes evaluation record to DynamoDB Incidents table."""
-    # Convert floats to Decimal for DynamoDB serialization
     clean_snapshot = {
         "count": int(metric_snapshot.get("current_count_per_min", 0)),
         "baseline": Decimal(str(metric_snapshot.get("baseline_count_per_min", 0.0))),
@@ -150,13 +154,13 @@ def write_incident_record(
         "classification": classification,
         "confidence": Decimal(str(round(confidence, 2))),
         "bedrock_explanation": explanation,
-        "action_taken": "NONE",
+        "action_taken": action_taken,
         "is_fallback": is_fallback,
         "bedrock_model_used": model_used,
     }
 
     incidents_table.put_item(Item=item)
-    logger.info(f"Successfully recorded incident {incident_id} to Incidents table.")
+    logger.info(f"Successfully recorded incident {incident_id} with action_taken='{action_taken}'.")
 
 
 def lambda_handler(event, context):
@@ -213,6 +217,59 @@ def lambda_handler(event, context):
         explanation = f"FAIL-CLOSED FALLBACK: Bedrock reasoning failed ({type(e).__name__}: {str(e)}). Defaulted to RUNAWAY for cost safety."
         raw_bedrock_response = {"fallback_error": str(e), "error_type": type(e).__name__}
 
+    # Day 3 Remediation Logic:
+    # 1. If RUNAWAY:
+    #    - dev/staging: auto-throttle via Remediator Lambda
+    #    - prod: write to ApprovalQueue, withhold auto-throttle (PENDING_APPROVAL)
+    # 2. If NORMAL:
+    #    - no remediation action taken (NONE)
+    action_taken = "NONE"
+    remediation_result = None
+
+    if classification == "RUNAWAY":
+        if str(environment).lower() in ["dev", "staging"]:
+            logger.info(f"Environment '{environment}' is dev/staging: invoking Remediator directly...")
+            try:
+                rem_resp = lambda_client.invoke(
+                    FunctionName=REMEDIATOR_FUNCTION_NAME,
+                    InvocationType="RequestResponse",
+                    Payload=json.dumps({
+                        "incident_id": incident_id,
+                        "resource": resource,
+                        "stage": environment,
+                        "trigger_source": "dev_auto",
+                    }),
+                )
+                remediation_result = json.loads(rem_resp["Payload"].read().decode("utf-8"))
+                action_taken = "AUTO_THROTTLED"
+                logger.info(f"Auto-remediation successful: {remediation_result}")
+            except Exception as rem_err:
+                logger.error(f"Auto-remediation invocation failed: {rem_err}", exc_info=True)
+                action_taken = "AUTO_THROTTLE_FAILED"
+        else:
+            # Prod path: write to ApprovalQueue, withhold action
+            logger.info(f"Environment '{environment}' is prod: writing to ApprovalQueue and withholding auto-throttle...")
+            try:
+                approval_queue_table.put_item(
+                    Item={
+                        "approval_id": incident_id,
+                        "incident_id": incident_id,
+                        "status": "PENDING",
+                        "created_at": now_epoch,
+                        "resolved_at": None,
+                        "resolved_by": None,
+                        "resource": resource,
+                        "stage": environment,
+                        "classification": classification,
+                        "explanation": explanation,
+                    }
+                )
+                action_taken = "PENDING_APPROVAL"
+                logger.info(f"Created PENDING approval entry in ApprovalQueue for {incident_id}.")
+            except Exception as q_err:
+                logger.error(f"Failed to write to ApprovalQueue: {q_err}", exc_info=True)
+                action_taken = "APPROVAL_QUEUE_WRITE_FAILED"
+
     # Persist every evaluation to Incidents table
     write_incident_record(
         incident_id=incident_id,
@@ -224,6 +281,7 @@ def lambda_handler(event, context):
         classification=classification,
         confidence=confidence,
         explanation=explanation,
+        action_taken=action_taken,
         is_fallback=is_fallback,
         model_used=model_id,
     )
@@ -236,6 +294,8 @@ def lambda_handler(event, context):
         "classification": classification,
         "confidence": confidence,
         "explanation": explanation,
+        "action_taken": action_taken,
+        "remediation_result": remediation_result,
         "is_fallback": is_fallback,
         "bedrock_model_used": model_id,
         "raw_bedrock_response": raw_bedrock_response,

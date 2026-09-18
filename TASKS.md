@@ -23,15 +23,15 @@ Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
 - **End-of-day check**: detect->reason->log cycle works end to end with Bedrock Converse and DynamoDB Incidents
 
 ## Day 3 (Sat) — Remediation + approval gate
-- [ ] Remediator Lambda: `update_stage` throttle logic, idempotency check
-- [ ] Dev/staging path: reasoner → remediator direct call on RUNAWAY
-- [ ] Prod path: reasoner → ApprovalQueue write on RUNAWAY, no auto-throttle
-- [ ] `approve-action` Lambda + API Gateway endpoint
-- [ ] `get-incidents` Lambda + API Gateway endpoint
-- [ ] Write the three demo scripts: `load_test_legit.py` (many unique
+- [x] Remediator Lambda: `update_stage` throttle logic, idempotency check
+- [x] Dev/staging path: reasoner → remediator direct call on RUNAWAY
+- [x] Prod path: reasoner → ApprovalQueue write on RUNAWAY, no auto-throttle
+- [x] `approve-action` Lambda + API Gateway endpoint
+- [x] `get-incidents` Lambda + API Gateway endpoint
+- [x] Write the three demo scripts: `load_test_legit.py` (many unique
       callers), `load_test_runaway.py` (single caller, identical payload),
       and a naive static-threshold script to show the false-positive
-- **End-of-day check**: full pipeline works live — trigger a runaway loop,
+- [x] **End-of-day check**: full pipeline works live — trigger a runaway loop,
   watch it get throttled (dev) or queued (prod), approve it, confirm
   throttle applies
 

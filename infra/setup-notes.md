@@ -307,3 +307,45 @@ python scripts/setup_reasoner.py
 ```bash
 python scripts/test_reasoner.py
 ```
+
+---
+
+## 6. Day 3: Remediation & Human Approval Gate Infrastructure
+
+### Remediator Lambda (`guardrail-remediator`)
+- **Purpose**: Directly applies API Gateway stage throttle (`RateLimit=0, BurstLimit=0`) via `apigateway.update_stage`.
+- **Target**: Strictly limited to stage throttling on API Gateway (`/*/*/throttling/rateLimit`, `/*/*/throttling/burstLimit`).
+- **Idempotency**: Reads current stage settings first via `get_stage`. If already throttled (`rateLimit == 0.0` and `burstLimit == 0`), returns `ALREADY_THROTTLED` without throwing an error.
+- **Table Updated**: Updates `action_taken` on `Incidents` DynamoDB table.
+
+### Control Plane API Gateway (`guardrail-control-api`)
+- **Rest API ID**: `agcki2mnvi`
+- **Base URL**: `https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod`
+- **Isolation Rationale**: Control plane endpoints are completely decoupled from `guardrail-demo-api`. If the demo API is throttled to 0 rps, the control plane remains 100% operational.
+- **Endpoints**:
+  1. `GET /incidents` -> Routed to `guardrail-get-incidents` Lambda. Supports query parameter `?limit=N` (defaults to 50, scan order reverse chronological). Enables CORS.
+  2. `POST /incidents/{incident_id}/approve` -> Routed to `guardrail-approve-action` Lambda. Validates approval status in `ApprovalQueue`, invokes `guardrail-remediator`, marks approval record as `APPROVED`, and sets `action_taken = APPROVED_AND_THROTTLED`. Enables CORS.
+
+### Branching Behavior
+- **`dev` / `staging` Environment**: Reasoner directly invokes `guardrail-remediator` upon `RUNAWAY` classification (`trigger_source: dev_auto`), setting `action_taken: AUTO_THROTTLED`.
+- **`prod` Environment**: Reasoner withholds automated remediation, records pending item in `ApprovalQueue` (`status: PENDING`), and sets `action_taken: PENDING_APPROVAL`. Only upon human approval via `POST /incidents/{incident_id}/approve` is `guardrail-remediator` invoked.
+
+### Automated Setup:
+```bash
+python scripts/setup_day3.py
+```
+
+### Verification Scripts:
+- **Full End-to-End Remediation**:
+  ```bash
+  python scripts/test_day3_remediation.py
+  ```
+- **Dev Branch Auto-Throttling**:
+  ```bash
+  python scripts/test_day3_dev_branch.py
+  ```
+- **Demo Scripts**:
+  - `python scripts/load_test_legit.py` (35 unique callers, varied payloads -> NORMAL)
+  - `python scripts/load_test_runaway.py` (1 caller, repeated retry loop -> RUNAWAY)
+  - `python scripts/simulate_naive_threshold.py` (comparison demonstrating false positive elimination)
+

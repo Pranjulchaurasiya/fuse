@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ApiGatewayThrottleAccess",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:PATCH",
+        "apigateway:PUT"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:ap-south-1::/restapis",
+        "arn:aws:apigateway:ap-south-1::/restapis/*",
+        "arn:aws:apigateway:ap-south-1::/restapis/*/stages",
+        "arn:aws:apigateway:ap-south-1::/restapis/*/stages/*"
+      ]
+    },
+    {
+      "Sid": "DynamoDBIncidentsUpdateAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:UpdateItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem"
+      ],
+      "Resource": "arn:aws:dynamodb:ap-south-1:*:table/Incidents"
+    }
+  ]
+}
