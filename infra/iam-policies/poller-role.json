@@ -19,6 +19,17 @@
         "dynamodb:Query"
       ],
       "Resource": "arn:aws:dynamodb:ap-south-1:*:table/Deployments"
+    },
+    {
+      "Sid": "DemoLogsAndReasonerInvokeAccess",
+      "Effect": "Allow",
+      "Action": [
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:DescribeLogStreams",
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "*"
     }
   ]
 }
