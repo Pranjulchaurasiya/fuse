@@ -15,16 +15,12 @@ Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
 - **End-of-day check**: poller Lambda logs real metric deltas on a schedule
 
 ## Day 2 (Fri) — Reasoning
-- [ ] Request Bedrock model access (Claude 3.5 Haiku) if not already enabled
-- [ ] Reasoner Lambda: build context payload, single `InvokeModel` call,
-      parse JSON response (API.md contract)
-- [ ] Unique-caller-count logic (from API Gateway access logs or a header
-      you control in the load-test scripts)
-- [ ] Incidents table: every cycle writes a record, classification included
-- [ ] Manual test: trigger poller manually with fake high metrics, confirm
-      Bedrock returns a sane classification
-- **End-of-day check**: one full detect→reason→log cycle works end to end,
-  manually triggered
+- [x] Request Bedrock model access (Claude 3.5 Haiku) — Anthropic console use case form walked through; Nova Micro working model active in ap-south-1
+- [x] Reasoner Lambda: build context payload, Bedrock Converse call with toolConfig (structured JSON output), fail-closed fallback
+- [x] Unique-caller-count logic & sample payloads ingested in Reasoner contract
+- [x] Incidents table: every cycle writes a record, classification included
+- [x] Manual test: trigger reasoner manually with fake high metrics, confirm Bedrock returns sane classification + fail-closed fallback
+- **End-of-day check**: detect->reason->log cycle works end to end with Bedrock Converse and DynamoDB Incidents
 
 ## Day 3 (Sat) — Remediation + approval gate
 - [ ] Remediator Lambda: `update_stage` throttle logic, idempotency check

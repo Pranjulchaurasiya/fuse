@@ -8,6 +8,7 @@ Target Region: `ap-south-1` (Mumbai) — locked across all services.
 - **Backing Lambda**: `guardrail-demo-target` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-demo-target`)
 - **DynamoDB Tables**: `Deployments`, `Incidents`, `ApprovalQueue`
 - **Poller Lambda**: `guardrail-poller` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-poller`)
+- **Reasoner Lambda**: `guardrail-reasoner` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-reasoner`)
 - **EventBridge Rule**: `guardrail-poller-schedule` (`rate(1 minute)`)
 
 ---
@@ -289,4 +290,20 @@ aws events put-targets \
   --rule guardrail-poller-schedule \
   --targets "Id"="1","Arn"="arn:aws:lambda:ap-south-1:${ACCOUNT_ID}:function:guardrail-poller" \
   --region ap-south-1
+```
+
+---
+
+## 5. Reasoner Lambda (Bedrock Converse & Incidents Persistence)
+
+Classifies traffic anomaly snapshots using Amazon Bedrock Converse API (`toolConfig`), enforcing deterministic JSON classification (`NORMAL` vs `RUNAWAY`), confidence, and explanation. Persists every cycle's outcome to DynamoDB `Incidents`.
+
+### Automated Setup:
+```bash
+python scripts/setup_reasoner.py
+```
+
+### Verification & Fallback Testing:
+```bash
+python scripts/test_reasoner.py
 ```
