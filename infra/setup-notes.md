@@ -7,6 +7,8 @@ Target Region: `ap-south-1` (Mumbai) — locked across all services.
 - **Invoke URL**: `https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod`
 - **Backing Lambda**: `guardrail-demo-target` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-demo-target`)
 - **DynamoDB Tables**: `Deployments`, `Incidents`, `ApprovalQueue`
+- **Poller Lambda**: `guardrail-poller` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-poller`)
+- **EventBridge Rule**: `guardrail-poller-schedule` (`rate(1 minute)`)
 
 ---
 
@@ -224,4 +226,67 @@ aws apigateway update-stage \
 Run as the final step of a deployment:
 ```bash
 python scripts/deploy_heartbeat.py --resource guardrail-demo-api --note "v1.0.0 initial deploy"
+```
+
+---
+
+## 4. Poller Lambda & EventBridge 1-Minute Schedule
+
+Monitors API Gateway `Count` metric, checks `Deployments` heartbeat, and computes traffic baseline.
+
+### Automated Setup:
+```bash
+python scripts/setup_poller.py
+```
+
+### Manual / CLI Steps:
+```bash
+# 1. Create IAM Role with poller-role.json and basic execution
+aws iam create-role \
+  --role-name guardrail-poller-role \
+  --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+
+aws iam attach-role-policy \
+  --role-name guardrail-poller-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+aws iam put-role-policy \
+  --role-name guardrail-poller-role \
+  --policy-name guardrail-poller-permissions \
+  --policy-document file://infra/iam-policies/poller-role.json
+
+# 2. Package and Create Lambda
+cd lambdas/poller && zip -q function.zip handler.py && cd ../..
+
+aws lambda create-function \
+  --function-name guardrail-poller \
+  --runtime python3.12 \
+  --role arn:aws:iam::${ACCOUNT_ID}:role/guardrail-poller-role \
+  --handler handler.lambda_handler \
+  --zip-file fileb://lambdas/poller/function.zip \
+  --timeout 15 \
+  --memory-size 128 \
+  --environment 'Variables={API_NAME=guardrail-demo-api,STAGE_NAME=prod,DEPLOYMENTS_TABLE=Deployments,WINDOW_MINUTES=15}' \
+  --region ap-south-1
+
+# 3. Create EventBridge Rule (1-minute rate)
+aws events put-rule \
+  --name guardrail-poller-schedule \
+  --schedule-expression "rate(1 minute)" \
+  --state ENABLED \
+  --region ap-south-1
+
+# 4. Wire Target and Add Permission
+aws lambda add-permission \
+  --function-name guardrail-poller \
+  --statement-id eventbridge-guardrail-poller-schedule \
+  --action lambda:InvokeFunction \
+  --principal events.amazonaws.com \
+  --source-arn arn:aws:events:ap-south-1:${ACCOUNT_ID}:rule/guardrail-poller-schedule \
+  --region ap-south-1
+
+aws events put-targets \
+  --rule guardrail-poller-schedule \
+  --targets "Id"="1","Arn"="arn:aws:lambda:ap-south-1:${ACCOUNT_ID}:function:guardrail-poller" \
+  --region ap-south-1
 ```

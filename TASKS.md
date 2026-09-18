@@ -9,9 +9,9 @@ Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
       resource that gets throttled later — needs to exist first)
 - [x] Create the three DynamoDB tables (SCHEMA.md)
 - [x] Write `deploy_heartbeat.py`, wire it as the last step of any deploy
-- [ ] Poller Lambda: pull `AWS/ApiGateway` Count via `get_metric_data`,
+- [x] Poller Lambda: pull `AWS/ApiGateway` Count via `get_metric_data`,
       compute rolling baseline, log to console (no Bedrock/remediation yet)
-- [ ] EventBridge rule wired to poller, confirmed firing every 1 min
+- [x] EventBridge rule wired to poller, confirmed firing every 1 min
 - **End-of-day check**: poller Lambda logs real metric deltas on a schedule
 
 ## Day 2 (Fri) — Reasoning
