@@ -1,0 +1,284 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Fuse — AWS Cost Guardrail & Real-Time Circuit Breaker.
+  Autonomous context-aware circuit breaker for serverless APIs powered by
+  Amazon Bedrock, EventBridge, DynamoDB, and API Gateway stage throttling.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fuse-guardrail
+    Description: Real-time context-aware circuit breaker for serverless AWS APIs
+    Author: Pranjul Chaurasiya
+    SpdxLicenseId: Apache-2.0
+
+Parameters:
+  TargetApiName:
+    Type: String
+    Default: 'guardrail-demo-api'
+    Description: Name of the REST API Gateway being monitored and protected.
+
+  TargetRestApiId:
+    Type: String
+    Default: 'poim5xmgs2'
+    Description: REST API ID of the target API Gateway to throttle on runaway anomalies.
+
+  TargetStageName:
+    Type: String
+    Default: 'prod'
+    Description: API Gateway stage name to monitor and throttle (e.g. prod, dev).
+
+  BedrockModelId:
+    Type: String
+    Default: 'apac.amazon.nova-micro-v1:0'
+    Description: Bedrock foundation model ID for anomaly reasoning (e.g. apac.amazon.nova-micro-v1:0 or anthropic.claude-3-5-haiku-20241022-v1:0).
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.12
+    Tracing: Disabled
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AWS::Region
+
+Resources:
+  # ============================================================================
+  # 01 / DYNAMODB STATE TABLES
+  # ============================================================================
+  DeploymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-Deployments'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deployment_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deployment_id
+          KeyType: HASH
+
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-Incidents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: environment
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: incident_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: environment-timestamp-index
+          KeySchema:
+            - AttributeName: environment
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ApprovalQueueTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-ApprovalQueue'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: approval_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: approval_id
+          KeyType: HASH
+
+  # ============================================================================
+  # 02 / ISOLATED CONTROL PLANE API GATEWAY
+  # ============================================================================
+  ControlApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-control-api'
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+
+  # ============================================================================
+  # 03 / CORE GUARDRAIL LAMBDA FUNCTIONS
+  # ============================================================================
+  RemediatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-remediator'
+      CodeUri: lambdas/remediator/
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          TARGET_API_ID: !Ref TargetRestApiId
+          TARGET_API_NAME: !Ref TargetApiName
+          INCIDENTS_TABLE: !Ref IncidentsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - apigateway:GET
+                - apigateway:PATCH
+              Resource: !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${TargetRestApiId}/stages/*'
+
+  ReasonerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-reasoner'
+      CodeUri: lambdas/reasoner/
+      Handler: handler.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref AWS::Region
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          DEPLOYMENTS_TABLE: !Ref DeploymentsTable
+          APPROVAL_QUEUE_TABLE: !Ref ApprovalQueueTable
+          REMEDIATOR_FUNCTION_NAME: !Ref RemediatorFunction
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApprovalQueueTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref DeploymentsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RemediatorFunction
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: '*'
+
+  PollerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-poller'
+      CodeUri: lambdas/poller/
+      Handler: handler.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          API_NAME: !Ref TargetApiName
+          STAGE_NAME: !Ref TargetStageName
+          DEPLOYMENTS_TABLE: !Ref DeploymentsTable
+          REASONER_FUNCTION_NAME: !Ref ReasonerFunction
+          DEMO_TARGET_LOG_GROUP: !Sub '/aws/lambda/${TargetApiName}-target'
+          WINDOW_MINUTES: '15'
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DeploymentsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReasonerFunction
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cloudwatch:GetMetricData
+                - cloudwatch:GetMetricStatistics
+                - logs:FilterLogEvents
+                - logs:DescribeLogStreams
+              Resource: '*'
+
+  GetIncidentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-get-incidents'
+      CodeUri: lambdas/get_incidents/
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          INCIDENTS_TABLE: !Ref IncidentsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref IncidentsTable
+      Events:
+        GetIncidentsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /incidents
+            Method: GET
+
+  ApproveActionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-approve-action'
+      CodeUri: lambdas/approve_action/
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          APPROVAL_QUEUE_TABLE: !Ref ApprovalQueueTable
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          REMEDIATOR_FUNCTION_NAME: !Ref RemediatorFunction
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApprovalQueueTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RemediatorFunction
+      Events:
+        ApproveActionApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /incidents/{incident_id}/approve
+            Method: POST
+
+  # ============================================================================
+  # 04 / EVENTBRIDGE 1-MINUTE DETECTION SCHEDULE
+  # ============================================================================
+  PollerScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-poller-schedule'
+      Description: '1-minute EventBridge trigger for Fuse metrics poller'
+      ScheduleExpression: 'rate(1 minute)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt PollerFunction.Arn
+          Id: PollerTarget
+
+  PollerSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PollerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PollerScheduleRule.Arn
+
+Outputs:
+  ControlPlaneApiUrl:
+    Description: Base URL for the Fuse Control Plane REST API
+    Value: !Sub 'https://${ControlApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ControlApiUrl'
+
+  IncidentsEndpoint:
+    Description: GET endpoint to query detection incidents
+    Value: !Sub 'https://${ControlApi}.execute-api.${AWS::Region}.amazonaws.com/prod/incidents'
+
+  ApproveEndpoint:
+    Description: POST endpoint to approve circuit trips
+    Value: !Sub 'https://${ControlApi}.execute-api.${AWS::Region}.amazonaws.com/prod/incidents/{incident_id}/approve'
+
+  IncidentsTableName:
+    Description: DynamoDB table storing incident evaluation history
+    Value: !Ref IncidentsTable
+
+  ApprovalQueueTableName:
+    Description: DynamoDB table storing production safety gate pending items
+    Value: !Ref ApprovalQueueTable
