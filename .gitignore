@@ -66,6 +66,7 @@ tmp/
 *.avi
 *.wav
 *.mp3
+*.webp
 recordings/
 videos/
 demo/
