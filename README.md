@@ -4,7 +4,7 @@
 > Built for **First Commit — Bharat Builds Tour 2026 (Ship It Track)**  
 > Builder: **Pranjul Chaurasiya** (@pranjul_chaurasiya | Team Code: `ZK2FP6`)
 
-[Live Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) &bull; [1-Click Quickstart](docs/quickstart.md) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+[Live Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
 
 [![Live Console](https://img.shields.io/badge/Live_Console-S3_Static_Website-blue?style=for-the-badge&logo=amazons3)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
@@ -98,7 +98,7 @@ flowchart TD
 ## 03 / Key Architectural Pillars
 
 ### 1. Completely Decoupled Control Plane
-Management endpoints (`/incidents`, `/approve`) run on an isolated REST API (`guardrail-control-api`). When `guardrail-demo-api` stage throttling is tripped to 0 rps, the operator console remains 100% responsive and operational.
+Management endpoints (`/incidents`, `/incidents/{id}/approve`) run on an isolated REST API (`guardrail-control-api`). When `guardrail-demo-api` stage throttling is tripped to 0 rps, the operator console remains 100% responsive and operational.
 
 ### 2. Single-Turn Deterministic Bedrock Contract
 The Reasoner invokes Amazon Bedrock's **Converse API** exactly once per evaluation cycle using `toolConfig` with schema enforcement (`classify_anomaly`). This forces the model to respond strictly via typed JSON:
@@ -131,7 +131,6 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 | **Scenario 1 (Legit Traffic)** | `python scripts/load_test_legit.py` | 35 requests from 35 unique callers &rarr; Bedrock classifies `NORMAL`. |
 | **Scenario 2 (Runaway Loop)** | `python scripts/load_test_runaway.py` | 40 rapid requests from 1 caller &rarr; Bedrock classifies `RUNAWAY` &rarr; prod withheld in `ApprovalQueue`. |
 | **Live Web Approval** | Open [Fuse Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) | Click *Approve Circuit Trip* &rarr; Stage `RateLimit` drops to 0 &rarr; Live Probe confirms `HTTP 429`. |
-| **1-Click SAM Deploy** | `sam deploy --guided` | Deploys complete stack to any AWS account in 90s ([Quickstart](docs/quickstart.md)). |
 | **Automated End-to-End** | `python scripts/test_day3_remediation.py` | Automated validation of approval, stage mutation, and curl 429 verification. |
 | **Clean Slate Reset** | `python scripts/clear_test_data.py` | Wipes DynamoDB incident records and resets API Gateway stage throttles back to 1000/2000. |
 
