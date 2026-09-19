@@ -1,6 +1,6 @@
 /**
- * app.js — Operator Incident Response Console
- * Fronts AWS Cost Guardrail Control Plane API (ap-south-1)
+ * app.js — Terminal Incident Response Stream Controller
+ * Connects directly to AWS Cost Guardrail Control Plane API (ap-south-1)
  */
 
 const CONTROL_API_BASE = "https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod";
@@ -17,15 +17,14 @@ const metricThrottled = document.getElementById("metric-throttled");
 const feedCount = document.getElementById("feed-count");
 const envFilter = document.getElementById("env-filter");
 const refreshBtn = document.getElementById("refresh-btn");
-const autoRefreshCheckbox = document.getElementById("auto-refresh-checkbox");
 
 /**
- * Formats epoch timestamp into clean local time string.
+ * Formats epoch timestamp into clean terminal time string.
  */
 function formatTimestamp(epochSec) {
-  if (!epochSec) return "Just now";
+  if (!epochSec) return "[--:--:--]";
   const date = new Date(Number(epochSec) * 1000);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return `[${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}]`;
 }
 
 /**
@@ -34,16 +33,16 @@ function formatTimestamp(epochSec) {
 function formatRelativeTime(epochSec) {
   if (!epochSec) return "";
   const diffSec = Math.floor(Date.now() / 1000 - Number(epochSec));
-  if (diffSec < 60) return `${Math.max(1, diffSec)}s ago`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 60) return `-${Math.max(1, diffSec)}s`;
+  if (diffSec < 3600) return `-${Math.floor(diffSec / 60)}m`;
+  return `-${Math.floor(diffSec / 3600)}h`;
 }
 
 /**
  * Fetches latest incidents from Control Plane API.
  */
 async function fetchIncidents() {
-  refreshBtn.classList.add("loading");
+  if (refreshBtn) refreshBtn.classList.add("loading");
   try {
     const res = await fetch(`${CONTROL_API_BASE}/incidents?limit=50`, {
       method: "GET",
@@ -62,14 +61,14 @@ async function fetchIncidents() {
     console.error("Failed to fetch incidents:", err);
     if (allIncidents.length === 0) {
       container.innerHTML = `
-        <div class="empty-state">
-          <p style="color: var(--color-runaway);">Failed to connect to Control API: ${escapeHtml(err.message)}</p>
-          <button class="btn btn-secondary" onclick="fetchIncidents()">Retry</button>
+        <div class="terminal-empty">
+          <p style="color: var(--accent-amber);">[ERROR] CONTROL_PLANE_UNREACHABLE: ${escapeHtml(err.message)}</p>
+          <button class="terminal-btn" onclick="fetchIncidents()" style="margin-top: 10px;">[RETRY_CONNECTION]</button>
         </div>
       `;
     }
   } finally {
-    refreshBtn.classList.remove("loading");
+    if (refreshBtn) refreshBtn.classList.remove("loading");
   }
 }
 
@@ -84,14 +83,14 @@ function updateMetrics(incidents) {
     i.action_taken === "AUTO_THROTTLED" || i.action_taken === "APPROVED_AND_THROTTLED"
   ).length;
 
-  metricTotal.textContent = total;
-  metricRunaways.textContent = runaways;
-  metricPending.textContent = pending;
-  metricThrottled.textContent = throttled;
+  if (metricTotal) metricTotal.textContent = total;
+  if (metricRunaways) metricRunaways.textContent = runaways;
+  if (metricPending) metricPending.textContent = pending;
+  if (metricThrottled) metricThrottled.textContent = throttled;
 }
 
 /**
- * Renders the incident feed based on current environment filter.
+ * Renders the timeline feed based on current environment filter.
  */
 function renderFeed() {
   const filterVal = envFilter.value;
@@ -101,121 +100,105 @@ function renderFeed() {
     return env === filterVal.toLowerCase();
   });
 
-  feedCount.textContent = `Showing ${filtered.length} incident${filtered.length === 1 ? "" : "s"}`;
+  if (feedCount) feedCount.textContent = `COUNT: ${filtered.length} ENTRIES`;
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="empty-state">
-        <p>No incidents found for stage: <strong>${escapeHtml(filterVal)}</strong></p>
-        <span style="font-size: 12px;">Run a test traffic script or trigger the poller to view live activity.</span>
+      <div class="terminal-empty">
+        <p>&gt; NO INCIDENTS RECORDED FOR STAGE [${escapeHtml(filterVal).toUpperCase()}]</p>
+        <span style="font-size: 11px; color: var(--text-subtle);">Run load_test_runaway.py or await the next 1-min EventBridge cycle.</span>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = filtered.map(inc => renderIncidentCard(inc)).join("");
+  container.innerHTML = filtered.map(inc => renderTimelineEntry(inc)).join("");
 }
 
 /**
- * Generates HTML for a single incident card adhering to DESIGN.md states.
+ * Generates HTML for a single vertical timeline entry.
  */
-function renderIncidentCard(inc) {
+function renderTimelineEntry(inc) {
   const isRunaway = inc.classification === "RUNAWAY";
   const isPending = inc.action_taken === "PENDING_APPROVAL";
-  const stage = inc.environment || "prod";
-  const cardClass = isPending ? "card-pending" : (isRunaway ? "card-runaway" : "card-normal");
+  const stage = (inc.environment || "prod").toUpperCase();
+  const entryClass = isPending ? "timeline-entry entry-pending" : "timeline-entry";
   
   const snapshot = inc.metric_snapshot || {};
   const callers = snapshot.unique_callers ?? "N/A";
   const count = snapshot.count ?? "0";
   const delta = snapshot.delta ?? "0";
   const baseline = snapshot.baseline ?? "0";
+  const confidence = inc.confidence !== undefined ? `${Math.round(Number(inc.confidence) * 100)}%` : "N/A";
 
   let actionHtml = "";
   if (isPending) {
     actionHtml = `
-      <div class="action-status-badge" style="color: var(--color-pending);">
-        <span class="pulse-amber"></span>
-        <span>Awaiting Human Approval</span>
+      <div class="pending-alert-badge">
+        <span class="terminal-cursor">&#9608;</span>
+        <span>AWAITING HUMAN INTERVENTION // REASON: PROD_SAFETY_GATE</span>
       </div>
-      <button class="btn btn-approve" onclick="approveIncident('${inc.incident_id}', this)">
-        Approve Throttle (Rate → 0)
+      <button class="btn-approve-terminal" onclick="approveIncident('${inc.incident_id}', this)">
+        [ EXECUTE THROTTLE: RATE &rarr; 0 ]
       </button>
     `;
   } else if (inc.action_taken === "AUTO_THROTTLED") {
     actionHtml = `
-      <div class="action-status-badge" style="color: var(--color-runaway);">
-        <span>⚡ Auto-Throttled (${stage})</span>
-      </div>
-      <span class="chip-val" style="color: var(--color-text-muted); font-size: 12px;">Zero human latency</span>
+      <span class="action-status-text text-white">
+        [&#9889; AUTO_THROTTLED (${stage}) &mdash; ZERO HUMAN LATENCY]
+      </span>
+      <span style="font-size: 10px; color: var(--text-subtle);">RATELIMIT: 0 &bull; BURST: 0</span>
     `;
   } else if (inc.action_taken === "APPROVED_AND_THROTTLED") {
     actionHtml = `
-      <div class="action-status-badge" style="color: var(--color-accent);">
-        <span>✓ Approved & Throttled (429 Active)</span>
-      </div>
+      <span class="action-status-text text-white">
+        [&check; APPROVED_AND_THROTTLED &mdash; 429 TOO MANY REQUESTS ACTIVE]
+      </span>
+      <span style="font-size: 10px; color: var(--text-subtle);">RESOLVER: OPERATOR</span>
     `;
   } else {
     actionHtml = `
-      <div class="action-status-badge" style="color: var(--color-normal);">
-        <span>✓ Legitimate Traffic (No Action Needed)</span>
-      </div>
+      <span class="action-status-text">
+        [&check; VERIFIED_NORMAL &mdash; NO ACTION REQUIRED]
+      </span>
+      <span style="font-size: 10px; color: var(--text-subtle);">BASELINE INTACT</span>
     `;
   }
 
   return `
-    <div class="incident-card ${cardClass}" id="card-${inc.incident_id}">
-      <div class="card-top">
-        <div class="card-top-left">
-          <span class="badge-classification ${isRunaway ? "badge-runaway" : "badge-normal"}">
-            ${isRunaway ? "🔴 RUNAWAY" : "🟢 NORMAL"}
-          </span>
-          <span class="badge-stage">${escapeHtml(stage)}</span>
-          <span class="badge-resource">${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
+    <article class="${entryClass}" id="entry-${inc.incident_id}">
+      <div class="entry-header-row">
+        <div class="entry-classification ${isRunaway ? "class-runaway" : "class-normal"}">
+          [${escapeHtml(inc.classification)}]
         </div>
-        <div class="card-timestamp" title="${new Date(Number(inc.timestamp) * 1000).toISOString()}">
-          ${formatTimestamp(inc.timestamp)} (${formatRelativeTime(inc.timestamp)})
+        <div class="entry-axis-time">
+          ${formatTimestamp(inc.timestamp)} <span style="color: var(--text-subtle);">${formatRelativeTime(inc.timestamp)}</span>
+          <span class="entry-stage-tag">// ${escapeHtml(stage)}</span>
+          <span class="entry-stage-tag">// ${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
         </div>
       </div>
 
-      <div class="card-explanation">
-        ${escapeHtml(inc.bedrock_explanation || inc.explanation || "No explanation recorded.")}
+      <div class="entry-explanation">
+        &gt; ${escapeHtml(inc.bedrock_explanation || inc.explanation || "No explanation recorded.")}
       </div>
 
-      <div class="card-chips">
-        <div class="chip">
-          <span class="chip-label">Unique Callers:</span>
-          <span class="chip-val">${escapeHtml(String(callers))}</span>
-        </div>
-        <div class="chip">
-          <span class="chip-label">Current:</span>
-          <span class="chip-val">${escapeHtml(String(count))}/min</span>
-        </div>
-        <div class="chip">
-          <span class="chip-label">Baseline:</span>
-          <span class="chip-val">${escapeHtml(String(baseline))}/min</span>
-        </div>
-        <div class="chip">
-          <span class="chip-label">Delta:</span>
-          <span class="chip-val" style="color: ${Number(delta) > 0 ? 'var(--color-runaway)' : 'inherit'}">
-            +${escapeHtml(String(delta))}
-          </span>
-        </div>
-        <div class="chip">
-          <span class="chip-label">Confidence:</span>
-          <span class="chip-val">${inc.confidence !== undefined ? Math.round(Number(inc.confidence) * 100) + "%" : "N/A"}</span>
-        </div>
+      <div class="entry-telemetry-row">
+        <span class="telemetry-item">CALLERS: <strong>${escapeHtml(String(callers))}</strong></span>
+        <span class="telemetry-item">COUNT: <strong>${escapeHtml(String(count))}/MIN</strong></span>
+        <span class="telemetry-item">BASELINE: <strong>${escapeHtml(String(baseline))}/MIN</strong></span>
+        <span class="telemetry-item">DELTA: <strong class="telemetry-delta ${Number(delta) > 0 ? "text-white" : ""}">${Number(delta) > 0 ? "+" : ""}${escapeHtml(String(delta))}</strong></span>
+        <span class="telemetry-item">CONFIDENCE: <strong>${escapeHtml(confidence)}</strong></span>
       </div>
 
-      <div class="card-action-bar">
+      <div class="entry-action-row">
         ${actionHtml}
-        <button class="details-toggle" onclick="toggleDetails('${inc.incident_id}')">Inspect Raw Snapshot</button>
+        <button class="btn-raw-toggle" onclick="toggleRawDrawer('${inc.incident_id}')">[RAW_DATA]</button>
       </div>
 
-      <div class="details-drawer" id="details-${inc.incident_id}">
+      <div class="entry-raw-drawer" id="raw-${inc.incident_id}">
         <pre>${escapeHtml(JSON.stringify(inc, null, 2))}</pre>
       </div>
-    </div>
+    </article>
   `;
 }
 
@@ -226,7 +209,7 @@ async function approveIncident(incidentId, btnElement) {
   if (!btnElement) return;
   const origText = btnElement.textContent;
   btnElement.disabled = true;
-  btnElement.textContent = "Throttling Stage...";
+  btnElement.textContent = "[ EXECUTING THROTTLE... ]";
 
   try {
     const res = await fetch(`${CONTROL_API_BASE}/incidents/${incidentId}/approve`, {
@@ -243,9 +226,6 @@ async function approveIncident(incidentId, btnElement) {
       throw new Error(`HTTP ${res.status}: ${errText}`);
     }
 
-    const data = await res.json();
-    console.log("Approval response:", data);
-
     // Optimistically update local item
     const target = allIncidents.find(i => i.incident_id === incidentId);
     if (target) {
@@ -254,17 +234,17 @@ async function approveIncident(incidentId, btnElement) {
     updateMetrics(allIncidents);
     renderFeed();
   } catch (err) {
-    alert(`Failed to approve incident: ${err.message}`);
+    alert(`FAILED TO EXECUTE APPROVAL: ${err.message}`);
     btnElement.disabled = false;
     btnElement.textContent = origText;
   }
 }
 
 /**
- * Toggles visibility of the raw snapshot JSON drawer.
+ * Toggles visibility of raw JSON drawer.
  */
-function toggleDetails(incidentId) {
-  const el = document.getElementById(`details-${incidentId}`);
+function toggleRawDrawer(incidentId) {
+  const el = document.getElementById(`raw-${incidentId}`);
   if (el) {
     el.classList.toggle("open");
   }
@@ -284,29 +264,11 @@ function escapeHtml(str) {
 }
 
 // Event Listeners
-envFilter.addEventListener("change", renderFeed);
-refreshBtn.addEventListener("click", fetchIncidents);
+if (envFilter) envFilter.addEventListener("change", renderFeed);
+if (refreshBtn) refreshBtn.addEventListener("click", fetchIncidents);
 
-autoRefreshCheckbox.addEventListener("change", (e) => {
-  if (e.target.checked) {
-    startAutoRefresh();
-  } else {
-    stopAutoRefresh();
-  }
-});
+// Auto-Refresh Loop (6s)
+autoRefreshTimer = setInterval(fetchIncidents, POLL_INTERVAL_MS);
 
-function startAutoRefresh() {
-  stopAutoRefresh();
-  autoRefreshTimer = setInterval(fetchIncidents, POLL_INTERVAL_MS);
-}
-
-function stopAutoRefresh() {
-  if (autoRefreshTimer) {
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = null;
-  }
-}
-
-// Initial Boot
+// Initial Load
 fetchIncidents();
-startAutoRefresh();
