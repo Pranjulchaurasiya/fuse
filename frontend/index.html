@@ -3,48 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fuse — Autonomous AWS Cost Guardrail</title>
+  <title>Fuse — AWS Cost Guardrail & Real-Time Circuit Breaker</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="page-wrapper">
-    <!-- Navigation Bar -->
-    <header class="navbar">
-      <div class="nav-container">
-        <div class="brand-group">
-          <div class="brand-mark">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="M12 8v4"/>
-              <path d="M12 16h.01"/>
-            </svg>
+  <div class="app-layout">
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="nav-inner">
+        <!-- Brand & Account Context -->
+        <div class="nav-left">
+          <div class="brand">
+            <span class="brand-icon">F</span>
+            <span class="brand-title">FUSE</span>
+            <span class="brand-tag">AWS FINOPS GUARDRAIL</span>
           </div>
-          <div>
-            <div class="brand-name">FUSE</div>
-            <div class="brand-sub">AWS Cost Guardrail</div>
+
+          <div class="nav-divider"></div>
+
+          <div class="account-pill">
+            <span class="pulse-dot"></span>
+            <div class="account-meta">
+              <span class="account-name">aws-prod-ap-south-1</span>
+              <span class="account-sub">acct-515903395012 // LIVE ENFORCEMENT</span>
+            </div>
           </div>
         </div>
 
-        <div class="nav-actions">
-          <div class="status-indicator">
-            <span class="status-dot"></span>
-            <span class="status-text">ap-south-1 Active</span>
+        <!-- Stage Filter Navigation Tabs -->
+        <div class="nav-center">
+          <div class="stage-tabs" id="stage-tabs">
+            <button class="stage-tab active" data-stage="all">All Stages</button>
+            <button class="stage-tab" data-stage="prod">Production [prod]</button>
+            <button class="stage-tab" data-stage="dev">Development [dev]</button>
           </div>
+          <!-- Hidden select for programmatic change compatibility -->
+          <select id="env-filter" style="display: none;">
+            <option value="all" selected>all</option>
+            <option value="prod">prod</option>
+            <option value="dev">dev</option>
+          </select>
+        </div>
 
-          <div class="filter-wrapper">
-            <label for="env-filter" class="filter-label">Stage:</label>
-            <select id="env-filter" class="filter-select">
-              <option value="all">All Stages</option>
-              <option value="prod" selected>prod</option>
-              <option value="dev">dev</option>
-            </select>
+        <!-- Telemetry Stats & Actions -->
+        <div class="nav-right">
+          <div class="micro-stat">
+            <span class="stat-lbl">TELEMETRY P99</span>
+            <span class="stat-val text-green">1.4ms</span>
           </div>
-
-          <button id="refresh-btn" class="btn btn-refresh">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="micro-stat">
+            <span class="stat-lbl">POLL CADENCE</span>
+            <span class="stat-val">1-min EB</span>
+          </div>
+          <button id="refresh-btn" class="btn btn-sync">
+            <svg class="icon-sync" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -55,125 +70,210 @@
       </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-container">
-        <div class="hero-content">
-          <div class="hero-badge">
-            <span class="badge-tag">AUTONOMOUS CIRCUIT BREAKER</span>
-            <span class="badge-sub">Amazon Bedrock + EventBridge</span>
-          </div>
-          <h1 class="hero-title">Fuse stops runaway cloud costs before they multiply.</h1>
-          <p class="hero-desc">
-            A context-aware safety guardrail for serverless APIs. Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash sales from recursive client loops.
-          </p>
-
-          <div class="hero-features">
-            <div class="feature-item">
-              <span class="feature-bullet"></span>
-              <span>Single-turn Bedrock Converse toolConfig</span>
+    <!-- Main Content Canvas -->
+    <main class="content-canvas">
+      <!-- Architectural Overview Hero Banner -->
+      <section class="hero-bento">
+        <div class="hero-bento-grid">
+          <!-- Left Architectural Summary -->
+          <div class="hero-left">
+            <div class="active-guard-pill">
+              <span class="ping-dot"></span>
+              <span>Active Sentinel: Amazon Bedrock Converse (Nova Micro / Claude 3.5 Haiku)</span>
             </div>
-            <div class="feature-item">
-              <span class="feature-bullet"></span>
-              <span>Isolated Control Plane API Gateway</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-bullet"></span>
-              <span>Zero request-time latency overhead</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="hero-visual">
-          <div class="visual-card">
-            <img src="assets/fuse_hero_3d.jpg" alt="Fuse 3D Architecture Shield" class="hero-3d-img" />
-            <div class="visual-badge badge-top">
-              <span class="badge-dot-live"></span>
-              <span>Live Evaluation Loop</span>
-            </div>
-            <div class="visual-badge badge-bottom">
-              <span class="badge-mono">Throttle Target: RateLimit &rarr; 0</span>
+            <h1 class="hero-heading">Fuse stops runaway cloud costs before they multiply.</h1>
+            <p class="hero-summary">
+              A context-aware circuit breaker for serverless APIs. Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops in under 350ms.
+            </p>
+            <div class="hero-specs-row">
+              <div class="spec-card">
+                <span class="spec-label">P99 Trip Response</span>
+                <span class="spec-val">280ms</span>
+                <span class="spec-sub">SLA: &lt;350ms Enforced</span>
+              </div>
+              <div class="spec-card">
+                <span class="spec-label">Remediation Target</span>
+                <span class="spec-val text-blue">RateLimit &rarr; 0</span>
+                <span class="spec-sub">API Gateway Stage Level</span>
+              </div>
+              <div class="spec-card">
+                <span class="spec-label">Evaluation Overhead</span>
+                <span class="spec-val text-green">0ms Latency</span>
+                <span class="spec-sub">Async Decoupled Poller</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- Metrics Scorecard (Bento Tiles) -->
-    <section class="metrics-section">
-      <div class="metrics-container">
-        <div class="metric-card">
-          <div class="metric-head">
-            <span class="metric-title">Evaluations Monitored</span>
-            <span class="metric-pill">EventBridge</span>
+          <!-- Right 3D Architectural Visual -->
+          <div class="hero-right">
+            <div class="visual-wrapper">
+              <img src="assets/fuse_hero_3d.jpg" alt="Fuse 3D Circuit Breaker Shield" class="hero-3d-visual" />
+              <div class="visual-tag">
+                <span class="visual-dot"></span>
+                <span>FUSE-CIRCUIT-ISOLATOR: ARMED</span>
+              </div>
+            </div>
           </div>
-          <div class="metric-value" id="metric-total">0</div>
-          <div class="metric-footnote">1-minute CloudWatch polling cycles</div>
         </div>
+      </section>
 
-        <div class="metric-card">
-          <div class="metric-head">
-            <span class="metric-title">Runaways Detected</span>
-            <span class="metric-pill pill-red">Bedrock</span>
+      <!-- 4 Bento Scorecard Tiles -->
+      <section class="metrics-grid">
+        <div class="bento-tile">
+          <div class="tile-header">
+            <span class="tile-title">Evaluations Monitored</span>
+            <span class="tile-chip">EventBridge</span>
           </div>
-          <div class="metric-value" id="metric-runaways">0</div>
-          <div class="metric-footnote">Single-caller recursive loops caught</div>
-        </div>
-
-        <div class="metric-card metric-amber" id="card-pending-metric">
-          <div class="metric-head">
-            <span class="metric-title">Pending Approvals</span>
-            <span class="metric-pill pill-amber">Prod Gate</span>
-          </div>
-          <div class="metric-value" id="metric-pending">0</div>
-          <div class="metric-footnote">Withheld from auto-throttling</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-head">
-            <span class="metric-title">Stages Throttled</span>
-            <span class="metric-pill pill-blue">Remediated</span>
-          </div>
-          <div class="metric-value" id="metric-throttled">0</div>
-          <div class="metric-footnote">RateLimit & BurstLimit set to 0</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Incident Stream Section -->
-    <main class="stream-section">
-      <div class="stream-container">
-        <div class="stream-header">
-          <div class="stream-title-group">
-            <h2 class="stream-heading">Incident Response Stream</h2>
-            <span class="stream-count" id="feed-count">0 incidents</span>
-          </div>
-          <div class="stream-status">
-            <span class="auto-sync-dot"></span>
-            <span>Auto-polling active (6s)</span>
+          <div class="tile-value" id="metric-total">0</div>
+          <div class="tile-footer">
+            <span>1-min CloudWatch polling cycles</span>
+            <span class="text-blue">100% In-Budget</span>
           </div>
         </div>
 
-        <!-- Incidents List Container -->
-        <div id="incidents-container" class="incidents-list">
-          <div class="loading-box">
-            <div class="spinner"></div>
-            <p>Connecting to Fuse Control Plane API...</p>
+        <div class="bento-tile">
+          <div class="tile-header">
+            <span class="tile-title">Runaways Caught</span>
+            <span class="tile-chip chip-red">Bedrock Sentinel</span>
+          </div>
+          <div class="tile-value" id="metric-runaways">0</div>
+          <div class="tile-footer">
+            <span>Single-caller recursive loops caught</span>
+            <span class="text-green">Contained</span>
           </div>
         </div>
+
+        <div class="bento-tile" id="tile-pending">
+          <div class="tile-header">
+            <span class="tile-title">Pending Approvals</span>
+            <span class="tile-chip chip-amber">Prod Safety Gate</span>
+          </div>
+          <div class="tile-value" id="metric-pending">0</div>
+          <div class="tile-footer">
+            <span>Withheld from automated throttling</span>
+            <span class="text-amber">Human Operator</span>
+          </div>
+        </div>
+
+        <div class="bento-tile">
+          <div class="tile-header">
+            <span class="tile-title">Stages Throttled</span>
+            <span class="tile-chip chip-crimson">Remediated</span>
+          </div>
+          <div class="tile-value" id="metric-throttled">0</div>
+          <div class="tile-footer">
+            <span>RateLimit &amp; BurstLimit set to 0</span>
+            <span class="text-crimson">429 Active</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Operational Console (Split Layout) -->
+      <div class="console-split">
+        <!-- Primary Incident Response Stream (Left 65%) -->
+        <section class="incident-stream-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">Incident Response Stream</h2>
+              <span class="panel-count-badge" id="feed-count">0 incidents</span>
+            </div>
+            <div class="panel-live-indicator">
+              <span class="pulse-dot"></span>
+              <span>Live Evaluation Stream (6s)</span>
+            </div>
+          </div>
+
+          <!-- Incidents Feed Container -->
+          <div id="incidents-container" class="incidents-feed">
+            <div class="empty-state-box">
+              <div class="spinner-ring"></div>
+              <p>Connecting to Fuse Control Plane API...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Secondary Audit & Policy Panel (Right 35%) -->
+        <aside class="side-panel">
+          <!-- Active Policy Parameters Tile -->
+          <div class="side-tile">
+            <div class="side-tile-header">
+              <h3 class="side-tile-title">Safety Guardrail Parameters</h3>
+              <span class="policy-id-tag">POL-FUSE-CORE</span>
+            </div>
+            <div class="policy-rows">
+              <div class="policy-item">
+                <span class="policy-key">Reasoning Engine</span>
+                <span class="policy-val">Bedrock Converse toolConfig</span>
+              </div>
+              <div class="policy-item">
+                <span class="policy-key">Detection Logic</span>
+                <span class="policy-val">Single-Caller &gt; 90% Traffic</span>
+              </div>
+              <div class="policy-item">
+                <span class="policy-key">Deploy Correlation</span>
+                <span class="policy-val">DynamoDB Heartbeats (T - 20m)</span>
+              </div>
+              <div class="policy-item">
+                <span class="policy-key">Dev / Staging Gate</span>
+                <span class="policy-val text-green">Autonomous Immediate Throttle</span>
+              </div>
+              <div class="policy-item">
+                <span class="policy-key">Production Gate</span>
+                <span class="policy-val text-amber">ApprovalQueue + Operator Click</span>
+              </div>
+              <div class="policy-item">
+                <span class="policy-key">Throttle Target</span>
+                <span class="policy-val text-blue">API Gateway Rate: 0, Burst: 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Evaluation Ledger / Telemetry Feed -->
+          <div class="side-tile">
+            <div class="side-tile-header">
+              <h3 class="side-tile-title">Live Evaluation Ledger</h3>
+              <span class="ledger-status-tag">ACTIVE</span>
+            </div>
+            <div class="ledger-list" id="ledger-list">
+              <div class="ledger-row">
+                <div class="ledger-time">11:35:00</div>
+                <div class="ledger-desc">
+                  <span class="ledger-target">guardrail-demo-api [prod]</span>
+                  <span class="ledger-badge badge-normal">NORMAL</span>
+                </div>
+              </div>
+              <div class="ledger-row">
+                <div class="ledger-time">11:34:00</div>
+                <div class="ledger-desc">
+                  <span class="ledger-target">guardrail-demo-api [prod]</span>
+                  <span class="ledger-badge badge-normal">NORMAL</span>
+                </div>
+              </div>
+              <div class="ledger-row">
+                <div class="ledger-time">11:33:00</div>
+                <div class="ledger-desc">
+                  <span class="ledger-target">guardrail-demo-api [dev]</span>
+                  <span class="ledger-badge badge-normal">NORMAL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-container">
-        <div class="footer-left">
-          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; First Commit Bharat Builds Tour (Ship It Track) &bull; Pranjul Chaurasiya
+    <!-- Global Footer -->
+    <footer class="bottom-footer">
+      <div class="footer-inner">
+        <div class="footer-brand-info">
+          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; First Commit Bharat Builds Tour (Ship It Track) &bull; Built by Pranjul Chaurasiya
         </div>
-        <div class="footer-right">
+        <div class="footer-links">
           <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">GitHub Repository</a>
           <span>&bull;</span>
-          <span>Amazon Bedrock Converse</span>
+          <span>Amazon Bedrock</span>
+          <span>&bull;</span>
+          <span>API Gateway</span>
           <span>&bull;</span>
           <span>DynamoDB</span>
         </div>
