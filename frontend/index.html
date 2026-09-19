@@ -3,14 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fuse — AWS Cost Guardrail & Real-Time Circuit Breaker</title>
+  <title>Fuse — AWS Cost Guardrail & Real-Time Circuit Breaker | First Commit</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app-layout">
+    <!-- Hackathon Context Banner (WeMakeDevs x AWS First Commit) -->
+    <div class="hackathon-ribbon">
+      <div class="ribbon-inner">
+        <div class="ribbon-left">
+          <span class="ribbon-tag">FIRST COMMIT</span>
+          <span class="ribbon-text">Bharat Builds Tour 2026 &bull; WeMakeDevs &times; AWS</span>
+          <span class="ribbon-track">Ship It Track &bull; Best UI</span>
+        </div>
+        <div class="ribbon-right">
+          <a href="https://www.wemakedevs.org/aws/first-commit" target="_blank" rel="noopener" class="ribbon-link">Event Portal &rarr;</a>
+          <span class="ribbon-sep">&bull;</span>
+          <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener" class="ribbon-link">GitHub Source</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Top Navigation Header -->
     <header class="top-nav">
       <div class="nav-inner">
@@ -72,8 +88,12 @@
 
     <!-- Main Content Canvas -->
     <main class="content-canvas">
-      <!-- Architectural Overview Hero Banner -->
+      <!-- 01 / Architectural Overview Hero Banner -->
       <section class="hero-bento">
+        <div class="section-badge-row">
+          <span class="section-mono-tag">01 / ARCHITECTURAL SENTINEL</span>
+          <span class="section-sub-tag">Ship It Track Submission &bull; Real AWS Deployment</span>
+        </div>
         <div class="hero-bento-grid">
           <!-- Left Architectural Summary -->
           <div class="hero-left">
@@ -83,7 +103,7 @@
             </div>
             <h1 class="hero-heading">Fuse stops runaway cloud costs before they multiply.</h1>
             <p class="hero-summary">
-              A context-aware circuit breaker for serverless APIs. Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops in under 350ms.
+              A context-aware circuit breaker for serverless AWS APIs. Built for <strong>First Commit (Bharat Builds Tour)</strong>, Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops in under 350ms.
             </p>
             <div class="hero-specs-row">
               <div class="spec-card">
@@ -99,7 +119,7 @@
               <div class="spec-card">
                 <span class="spec-label">Evaluation Overhead</span>
                 <span class="spec-val text-green">0ms Latency</span>
-                <span class="spec-sub">Async Decoupled Poller</span>
+                <span class="spec-sub">Decoupled EventBridge Poller</span>
               </div>
             </div>
           </div>
@@ -117,165 +137,230 @@
         </div>
       </section>
 
-      <!-- 4 Bento Scorecard Tiles -->
-      <section class="metrics-grid">
-        <div class="bento-tile">
-          <div class="tile-header">
-            <span class="tile-title">Evaluations Monitored</span>
-            <span class="tile-chip">EventBridge</span>
-          </div>
-          <div class="tile-value" id="metric-total">0</div>
-          <div class="tile-footer">
-            <span>1-min CloudWatch polling cycles</span>
-            <span class="text-blue">100% In-Budget</span>
-          </div>
+      <!-- 02 / Real-Time Fleet Telemetry Bento Scorecard -->
+      <section class="metrics-container-section">
+        <div class="section-badge-row">
+          <span class="section-mono-tag">02 / FLEET TELEMETRY SCORECARD</span>
+          <span class="section-sub-tag">Computed Honestly From Live DynamoDB Records</span>
         </div>
+        <div class="metrics-grid">
+          <div class="bento-tile">
+            <div class="tile-header">
+              <span class="tile-title">Evaluations Monitored</span>
+              <span class="tile-chip">EventBridge</span>
+            </div>
+            <div class="tile-value" id="metric-total">0</div>
+            <div class="tile-footer">
+              <span>1-min CloudWatch polling cycles</span>
+              <span class="text-blue">100% In-Budget</span>
+            </div>
+          </div>
 
-        <div class="bento-tile">
-          <div class="tile-header">
-            <span class="tile-title">Runaways Caught</span>
-            <span class="tile-chip chip-red">Bedrock Sentinel</span>
+          <div class="bento-tile">
+            <div class="tile-header">
+              <span class="tile-title">Runaways Caught</span>
+              <span class="tile-chip chip-red">Bedrock Sentinel</span>
+            </div>
+            <div class="tile-value" id="metric-runaways">0</div>
+            <div class="tile-footer">
+              <span>Single-caller recursive loops caught</span>
+              <span class="text-green">Contained</span>
+            </div>
           </div>
-          <div class="tile-value" id="metric-runaways">0</div>
-          <div class="tile-footer">
-            <span>Single-caller recursive loops caught</span>
-            <span class="text-green">Contained</span>
-          </div>
-        </div>
 
-        <div class="bento-tile" id="tile-pending">
-          <div class="tile-header">
-            <span class="tile-title">Pending Approvals</span>
-            <span class="tile-chip chip-amber">Prod Safety Gate</span>
+          <div class="bento-tile" id="tile-pending">
+            <div class="tile-header">
+              <span class="tile-title">Pending Approvals</span>
+              <span class="tile-chip chip-amber">Prod Safety Gate</span>
+            </div>
+            <div class="tile-value" id="metric-pending">0</div>
+            <div class="tile-footer">
+              <span>Withheld from automated throttling</span>
+              <span class="text-amber">Human Operator</span>
+            </div>
           </div>
-          <div class="tile-value" id="metric-pending">0</div>
-          <div class="tile-footer">
-            <span>Withheld from automated throttling</span>
-            <span class="text-amber">Human Operator</span>
-          </div>
-        </div>
 
-        <div class="bento-tile">
-          <div class="tile-header">
-            <span class="tile-title">Stages Throttled</span>
-            <span class="tile-chip chip-crimson">Remediated</span>
-          </div>
-          <div class="tile-value" id="metric-throttled">0</div>
-          <div class="tile-footer">
-            <span>RateLimit &amp; BurstLimit set to 0</span>
-            <span class="text-crimson">429 Active</span>
+          <div class="bento-tile">
+            <div class="tile-header">
+              <span class="tile-title">Stages Throttled</span>
+              <span class="tile-chip chip-crimson">Remediated</span>
+            </div>
+            <div class="tile-value" id="metric-throttled">0</div>
+            <div class="tile-footer">
+              <span>RateLimit &amp; BurstLimit set to 0</span>
+              <span class="text-crimson">429 Active</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Main Operational Console (Split Layout) -->
-      <div class="console-split">
-        <!-- Primary Incident Response Stream (Left 65%) -->
-        <section class="incident-stream-panel">
-          <div class="panel-header">
-            <div class="panel-title-group">
-              <h2 class="panel-title">Incident Response Stream</h2>
-              <span class="panel-count-badge" id="feed-count">0 incidents</span>
+      <!-- 03 / Main Operational Console (Split Layout) -->
+      <section class="console-section">
+        <div class="section-badge-row">
+          <span class="section-mono-tag">03 / INCIDENT RESPONSE &amp; KILL SWITCH</span>
+          <span class="section-sub-tag">Dynamic Stream fronting Amazon Bedrock &amp; API Gateway</span>
+        </div>
+        <div class="console-split">
+          <!-- Primary Incident Response Stream (Left 65%) -->
+          <div class="incident-stream-panel">
+            <div class="panel-header">
+              <div class="panel-title-group">
+                <h2 class="panel-title">Incident Stream</h2>
+                <span class="panel-count-badge" id="feed-count">0 incidents</span>
+              </div>
+              <div class="panel-live-indicator">
+                <span class="pulse-dot"></span>
+                <span>Live EventBridge Poller (6s Auto-Sync)</span>
+              </div>
             </div>
-            <div class="panel-live-indicator">
-              <span class="pulse-dot"></span>
-              <span>Live Evaluation Stream (6s)</span>
-            </div>
-          </div>
 
-          <!-- Incidents Feed Container -->
-          <div id="incidents-container" class="incidents-feed">
-            <div class="empty-state-box">
-              <div class="spinner-ring"></div>
-              <p>Connecting to Fuse Control Plane API...</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Secondary Audit & Policy Panel (Right 35%) -->
-        <aside class="side-panel">
-          <!-- Active Policy Parameters Tile -->
-          <div class="side-tile">
-            <div class="side-tile-header">
-              <h3 class="side-tile-title">Safety Guardrail Parameters</h3>
-              <span class="policy-id-tag">POL-FUSE-CORE</span>
-            </div>
-            <div class="policy-rows">
-              <div class="policy-item">
-                <span class="policy-key">Reasoning Engine</span>
-                <span class="policy-val">Bedrock Converse toolConfig</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-key">Detection Logic</span>
-                <span class="policy-val">Single-Caller &gt; 90% Traffic</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-key">Deploy Correlation</span>
-                <span class="policy-val">DynamoDB Heartbeats (T - 20m)</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-key">Dev / Staging Gate</span>
-                <span class="policy-val text-green">Autonomous Immediate Throttle</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-key">Production Gate</span>
-                <span class="policy-val text-amber">ApprovalQueue + Operator Click</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-key">Throttle Target</span>
-                <span class="policy-val text-blue">API Gateway Rate: 0, Burst: 0</span>
+            <!-- Incidents Feed Container -->
+            <div id="incidents-container" class="incidents-feed">
+              <div class="empty-state-box">
+                <div class="spinner-ring"></div>
+                <p>Connecting to Fuse Control Plane API...</p>
               </div>
             </div>
           </div>
 
-          <!-- Live Evaluation Ledger / Telemetry Feed -->
-          <div class="side-tile">
-            <div class="side-tile-header">
-              <h3 class="side-tile-title">Live Evaluation Ledger</h3>
-              <span class="ledger-status-tag">ACTIVE</span>
+          <!-- Secondary Audit, Probe & Policy Panel (Right 35%) -->
+          <aside class="side-panel">
+            <!-- Interactive Live Target API Health Probe -->
+            <div class="side-tile probe-tile">
+              <div class="side-tile-header">
+                <h3 class="side-tile-title">Target API Live Probe</h3>
+                <span class="probe-status-pill" id="probe-status-pill">CHECKING...</span>
+              </div>
+              <div class="probe-body">
+                <div class="probe-endpoint-box">
+                  <span class="probe-endpoint-lbl">PROBING TARGET ENDPOINT:</span>
+                  <code class="probe-endpoint-url">.../prod/items</code>
+                </div>
+                <div class="probe-result-row">
+                  <span class="probe-lbl">HTTP Status:</span>
+                  <span class="probe-val" id="probe-status-text">Testing connection...</span>
+                </div>
+                <div class="probe-result-row">
+                  <span class="probe-lbl">Throttle State:</span>
+                  <span class="probe-val" id="probe-throttle-state">--</span>
+                </div>
+                <button class="btn btn-probe" id="btn-probe-target">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  Probe Target API Now
+                </button>
+              </div>
             </div>
-            <div class="ledger-list" id="ledger-list">
-              <div class="ledger-row">
-                <div class="ledger-time">11:35:00</div>
-                <div class="ledger-desc">
-                  <span class="ledger-target">guardrail-demo-api [prod]</span>
-                  <span class="ledger-badge badge-normal">NORMAL</span>
-                </div>
+
+            <!-- Safety Guardrail Parameters Tile -->
+            <div class="side-tile">
+              <div class="side-tile-header">
+                <h3 class="side-tile-title">Guardrail Policy Rules</h3>
+                <span class="policy-id-tag">POL-FUSE-CORE</span>
               </div>
-              <div class="ledger-row">
-                <div class="ledger-time">11:34:00</div>
-                <div class="ledger-desc">
-                  <span class="ledger-target">guardrail-demo-api [prod]</span>
-                  <span class="ledger-badge badge-normal">NORMAL</span>
+              <div class="policy-rows">
+                <div class="policy-item">
+                  <span class="policy-key">Reasoning Model</span>
+                  <span class="policy-val">Bedrock Converse toolConfig</span>
                 </div>
-              </div>
-              <div class="ledger-row">
-                <div class="ledger-time">11:33:00</div>
-                <div class="ledger-desc">
-                  <span class="ledger-target">guardrail-demo-api [dev]</span>
-                  <span class="ledger-badge badge-normal">NORMAL</span>
+                <div class="policy-item">
+                  <span class="policy-key">Runaway Detection</span>
+                  <span class="policy-val">Single-Caller &gt; 90% Traffic</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Deploy Heartbeats</span>
+                  <span class="policy-val">DynamoDB Deployments (T-20m)</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Dev / Staging Gate</span>
+                  <span class="policy-val text-green">Auto-Throttle (Zero Latency)</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Production Gate</span>
+                  <span class="policy-val text-amber">ApprovalQueue Human Review</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Remediation Action</span>
+                  <span class="policy-val text-blue">RateLimit: 0, BurstLimit: 0</span>
                 </div>
               </div>
             </div>
+
+            <!-- Live Evaluation Ledger -->
+            <div class="side-tile">
+              <div class="side-tile-header">
+                <h3 class="side-tile-title">Live Evaluation Ledger</h3>
+                <span class="ledger-status-tag">ACTIVE</span>
+              </div>
+              <div class="ledger-list" id="ledger-list">
+                <div class="ledger-row" style="color: var(--text-muted); font-size: 11px;">
+                  Polling real-time evaluation history...
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- 04 / Hackathon Judging Walkthrough Guide -->
+      <section class="walkthrough-guide-section">
+        <div class="section-badge-row">
+          <span class="section-mono-tag">04 / JUDGING CRITERIA &amp; ARCHITECTURE PROOF</span>
+          <span class="section-sub-tag">First Commit (Bharat Builds Tour) Evaluation Guide</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <span class="guide-num">01</span>
+            <h4 class="guide-title">The Real Problem</h4>
+            <p class="guide-desc">
+              Serverless auto-scaling hides runaway loops. An infinite client retry, unhandled 500 loop, or recursive LLM agent can fire thousands of requests per second, accumulating catastrophic AWS bills before human operators wake up.
+            </p>
           </div>
-        </aside>
-      </div>
+
+          <div class="guide-card">
+            <span class="guide-num">02</span>
+            <h4 class="guide-title">Single-Turn Bedrock Sentinel</h4>
+            <p class="guide-desc">
+              Rather than brittle static thresholds that block legitimate flash sales, Fuse invokes Amazon Bedrock via the Converse API with <code>toolConfig</code>. It correlates caller diversity with deployment heartbeats to classify anomalies with high confidence.
+            </p>
+          </div>
+
+          <div class="guide-card">
+            <span class="guide-num">03</span>
+            <h4 class="guide-title">Production Safety Gate</h4>
+            <p class="guide-desc">
+              While dev/staging environments are throttled automatically, production traffic never auto-throttles blindly. Runaway anomalies are safely withheld in DynamoDB <code>ApprovalQueue</code> until confirmed with a single click.
+            </p>
+          </div>
+
+          <div class="guide-card">
+            <span class="guide-num">04</span>
+            <h4 class="guide-title">Zero Request-Time Overhead</h4>
+            <p class="guide-desc">
+              Fuse never sits as an inline proxy on the client request path. A 1-minute EventBridge poller monitors CloudWatch metrics out-of-band, preserving 100% of native AWS API Gateway and Lambda performance.
+            </p>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Global Footer -->
     <footer class="bottom-footer">
       <div class="footer-inner">
         <div class="footer-brand-info">
-          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; First Commit Bharat Builds Tour (Ship It Track) &bull; Built by Pranjul Chaurasiya
+          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; Built for <strong>First Commit | Bharat Builds Tour</strong> &bull; WeMakeDevs &times; AWS &bull; Pranjul Chaurasiya
         </div>
         <div class="footer-links">
+          <a href="https://www.wemakedevs.org/aws/first-commit" target="_blank" rel="noopener">WeMakeDevs First Commit</a>
+          <span>&bull;</span>
           <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">GitHub Repository</a>
           <span>&bull;</span>
           <span>Amazon Bedrock</span>
           <span>&bull;</span>
-          <span>API Gateway</span>
-          <span>&bull;</span>
-          <span>DynamoDB</span>
+          <span>ap-south-1</span>
         </div>
       </div>
     </footer>

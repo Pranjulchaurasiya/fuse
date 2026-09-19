@@ -360,6 +360,57 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// Target API Live Probe
+const TARGET_API_URL = "https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items";
+const probeStatusPill = document.getElementById("probe-status-pill");
+const probeStatusText = document.getElementById("probe-status-text");
+const probeThrottleState = document.getElementById("probe-throttle-state");
+const btnProbeTarget = document.getElementById("btn-probe-target");
+
+async function probeTargetApi() {
+  if (btnProbeTarget) btnProbeTarget.disabled = true;
+  if (probeStatusText) probeStatusText.textContent = "Probing target...";
+
+  try {
+    const res = await fetch(TARGET_API_URL, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (res.status === 429) {
+      if (probeStatusPill) {
+        probeStatusPill.textContent = "THROTTLED (429)";
+        probeStatusPill.className = "probe-status-pill status-throttled";
+      }
+      if (probeStatusText) probeStatusText.innerHTML = '<span class="text-crimson">HTTP 429 Too Many Requests</span>';
+      if (probeThrottleState) probeThrottleState.innerHTML = '<span class="text-crimson">Circuit Tripped &bull; Rate = 0</span>';
+    } else if (res.ok) {
+      if (probeStatusPill) {
+        probeStatusPill.textContent = "HEALTHY (200)";
+        probeStatusPill.className = "probe-status-pill status-ok";
+      }
+      if (probeStatusText) probeStatusText.innerHTML = '<span class="text-green">HTTP 200 OK</span>';
+      if (probeThrottleState) probeThrottleState.innerHTML = '<span class="text-green">Normal Flow &bull; Baseline Active</span>';
+    } else {
+      if (probeStatusPill) {
+        probeStatusPill.textContent = `HTTP ${res.status}`;
+        probeStatusPill.className = "probe-status-pill";
+      }
+      if (probeStatusText) probeStatusText.textContent = `HTTP ${res.status} ${res.statusText}`;
+      if (probeThrottleState) probeThrottleState.textContent = "Non-200 Status";
+    }
+  } catch (err) {
+    if (probeStatusPill) {
+      probeStatusPill.textContent = "PROBE FAILED";
+      probeStatusPill.className = "probe-status-pill";
+    }
+    if (probeStatusText) probeStatusText.textContent = err.message;
+    if (probeThrottleState) probeThrottleState.textContent = "Network error / CORS";
+  } finally {
+    if (btnProbeTarget) btnProbeTarget.disabled = false;
+  }
+}
+
 // Stage Tabs Event Handlers
 stageTabs.forEach(tab => {
   tab.addEventListener("click", () => {
@@ -375,9 +426,11 @@ stageTabs.forEach(tab => {
 
 // Event Listeners
 if (refreshBtn) refreshBtn.addEventListener("click", fetchIncidents);
+if (btnProbeTarget) btnProbeTarget.addEventListener("click", probeTargetApi);
 
 // Auto-Refresh Loop (6s)
 autoRefreshTimer = setInterval(fetchIncidents, POLL_INTERVAL_MS);
 
 // Initial Load
 fetchIncidents();
+probeTargetApi();

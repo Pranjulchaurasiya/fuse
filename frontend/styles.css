@@ -1,6 +1,7 @@
 /* ==========================================================================
    Fuse — Precision AWS Cost Guardrail & Circuit Breaker Console
-   Light Editorial Design System (Based on Stitch Precision Architecture)
+   Submitted for First Commit | Bharat Builds Tour (WeMakeDevs x AWS)
+   Editorial Light Theme with High-Precision Technical Typography
    ========================================================================== */
 
 :root {
@@ -9,10 +10,12 @@
   --bg-surface: #ffffff;
   --bg-subtle: #f1f5f9;
   --bg-highlight: #eff6ff;
+  --bg-atmosphere: #ffffff;
 
   /* Hairline Borders */
   --border-light: #e2e8f0;
   --border-strong: #cbd5e1;
+  --border-dashed: #cbd5e1;
   --border-active: #2563eb;
 
   /* Typography Colors */
@@ -21,7 +24,11 @@
   --text-muted: #64748b;
   --text-faint: #94a3b8;
 
-  /* Semantic State Colors (Zero Neon, Crisp Tonal Values) */
+  /* Hackathon Signature & Semantic State Accents */
+  --hackathon-purple: #7c3aed;
+  --hackathon-purple-light: #f5f3ff;
+  --hackathon-purple-border: #ddd6fe;
+
   --brand-primary: #004ac6;
   --brand-blue: #2563eb;
   --brand-light: #dbeafe;
@@ -75,6 +82,80 @@ body {
 }
 
 /* ==========================================================================
+   Hackathon Context Ribbon (WeMakeDevs x AWS First Commit)
+   ========================================================================== */
+.hackathon-ribbon {
+  background-color: var(--hackathon-purple-light);
+  border-bottom: 1px dashed var(--hackathon-purple-border);
+  padding: 5px 0;
+  font-size: 11px;
+}
+
+.ribbon-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ribbon-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ribbon-tag {
+  background-color: var(--hackathon-purple);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+
+.ribbon-text {
+  font-weight: 600;
+  color: #5b21b6;
+}
+
+.ribbon-track {
+  font-family: var(--font-mono);
+  color: #6d28d9;
+  font-weight: 500;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--hackathon-purple-border);
+}
+
+.ribbon-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ribbon-link {
+  color: var(--hackathon-purple);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ribbon-link:hover {
+  text-decoration: underline;
+}
+
+.ribbon-sep {
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
    Top Navigation Bar
    ========================================================================== */
 .top-nav {
@@ -125,7 +206,7 @@ body {
 
 .brand-title {
   font-family: var(--font-ui);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 17px;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -133,8 +214,8 @@ body {
 
 .brand-tag {
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   background-color: var(--bg-subtle);
   border: 1px solid var(--border-light);
   color: var(--text-muted);
@@ -302,7 +383,7 @@ body {
 }
 
 /* ==========================================================================
-   Content Canvas
+   Content Canvas & Section Badge Counters
    ========================================================================== */
 .content-canvas {
   max-width: 1360px;
@@ -312,17 +393,38 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
+}
+
+.section-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.section-mono-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.section-sub-tag {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* ==========================================================================
-   Hero Architectural Bento Banner
+   01 / Hero Architectural Bento Banner
    ========================================================================== */
 .hero-bento {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
   box-shadow: var(--shadow-sm);
+  padding: 24px;
   overflow: hidden;
 }
 
@@ -330,6 +432,7 @@ body {
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
+  gap: 24px;
 }
 
 @media (min-width: 980px) {
@@ -339,7 +442,6 @@ body {
 }
 
 .hero-left {
-  padding: 28px 32px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -387,7 +489,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   padding-top: 14px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .spec-card {
@@ -420,20 +522,10 @@ body {
 
 .hero-right {
   height: 100%;
-  border-top: 1px solid var(--border-light);
-  background-color: var(--bg-canvas);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
   position: relative;
-}
-
-@media (min-width: 980px) {
-  .hero-right {
-    border-top: none;
-    border-left: 1px solid var(--border-light);
-  }
 }
 
 .visual-wrapper {
@@ -459,7 +551,7 @@ body {
   position: absolute;
   bottom: 16px;
   right: 16px;
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(4px);
   border: 1px solid var(--border-light);
   border-radius: 4px;
@@ -481,8 +573,13 @@ body {
 }
 
 /* ==========================================================================
-   Bento Metrics Scorecard
+   02 / Bento Metrics Scorecard
    ========================================================================== */
+.metrics-container-section {
+  display: flex;
+  flex-direction: column;
+}
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -576,8 +673,13 @@ body {
 }
 
 /* ==========================================================================
-   Console Split Layout
+   03 / Console Split Layout
    ========================================================================== */
+.console-section {
+  display: flex;
+  flex-direction: column;
+}
+
 .console-split {
   display: grid;
   grid-template-columns: 1fr;
@@ -996,6 +1098,96 @@ body {
   color: var(--text-muted);
 }
 
+/* Interactive Probe Tile */
+.probe-tile {
+  border-color: rgba(37, 99, 235, 0.3);
+  background-color: #fcfdff;
+}
+
+.probe-status-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.probe-status-pill.status-ok {
+  background-color: var(--state-success-bg);
+  border: 1px solid var(--state-success-border);
+  color: var(--state-success-text);
+}
+
+.probe-status-pill.status-throttled {
+  background-color: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-border);
+  color: var(--state-danger-text);
+}
+
+.probe-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.probe-endpoint-box {
+  background-color: var(--bg-canvas);
+  border: 1px dashed var(--border-dashed);
+  padding: 6px 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.probe-endpoint-lbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.probe-endpoint-url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--brand-primary);
+  word-break: break-all;
+}
+
+.probe-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.probe-lbl {
+  color: var(--text-muted);
+}
+
+.probe-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.btn-probe {
+  margin-top: 4px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.btn-probe:hover {
+  background-color: var(--bg-subtle);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
 .policy-rows {
   display: flex;
   flex-direction: column;
@@ -1069,6 +1261,68 @@ body {
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 2px;
+}
+
+/* ==========================================================================
+   04 / Judging Criteria & Walkthrough Guide Cards
+   ========================================================================== */
+.walkthrough-guide-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.guide-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.guide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+.guide-num {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-primary);
+  line-height: 1;
+}
+
+.guide-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.guide-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.guide-desc code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--brand-primary);
 }
 
 /* Footer */
