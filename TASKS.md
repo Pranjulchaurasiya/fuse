@@ -36,14 +36,14 @@ Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
   throttle applies
 
 ## Day 4 (Sun) — Polish, demo, submit
-- [ ] Minimal dashboard: incident list, classification, explanation,
+- [x] Minimal dashboard: incident list, classification, explanation,
       action taken (frontend/index.html + app.js hitting `/incidents`)
-- [ ] Deploy dashboard to S3/Amplify, confirm public URL works
-- [ ] Rehearse and record the 3-minute demo video (see docs/demo-script.md)
+- [x] Deploy dashboard to S3/Amplify, confirm public URL works
+- [x] Rehearse and record the 3-minute demo video (see docs/demo-script.md)
       — script it, don't improvise live
-- [ ] Write the AWS Builder Center blog post (bonus prize track)
-- [ ] Final run-through: fresh AWS resources, confirm nothing depends on
-      leftover state from earlier testing
+- [x] Write the AWS Builder Center blog post (bonus prize track)
+- [x] Final run-through: fresh AWS resources, confirm nothing depends on
+      leftover state from earlier testing (automated with `clear_test_data.py`)
 - [ ] Submit: GitHub URL, live URL, demo video, blog link
 - **End-of-day check**: submission form fully complete before deadline
 
