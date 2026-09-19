@@ -4,10 +4,10 @@
 > Built for **First Commit — Bharat Builds Tour 2026 (Ship It Track)**  
 > Builder: **Pranjul Chaurasiya** (@pranjul_chaurasiya | Team Code: `ZK2FP6`)
 
-[Live Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+[Live Console (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
 
-[![Live Console](https://img.shields.io/badge/Live_Console-S3_Static_Website-blue?style=for-the-badge&logo=amazons3)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
-[![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
+[![Live Console](https://img.shields.io/badge/Live_Console-AWS_Amplify_Hosting_(HTTPS)-blue?style=for-the-badge&logo=awsamplify)](https://main.d1hndpgpwb40h8.amplifyapp.com)
+[![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
 [![Track](https://img.shields.io/badge/Track-Ship_It-green?style=for-the-badge)](https://www.wemakedevs.org/aws/first-commit)
 
@@ -130,7 +130,7 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 | **Naive Comparison** | `python scripts/simulate_naive_threshold.py` | Proves static threshold fails during flash sale while Fuse preserves legitimate traffic. |
 | **Scenario 1 (Legit Traffic)** | `python scripts/load_test_legit.py` | 35 requests from 35 unique callers &rarr; Bedrock classifies `NORMAL`. |
 | **Scenario 2 (Runaway Loop)** | `python scripts/load_test_runaway.py` | 40 rapid requests from 1 caller &rarr; Bedrock classifies `RUNAWAY` &rarr; prod withheld in `ApprovalQueue`. |
-| **Live Web Approval** | Open [Fuse Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) | Click *Approve Circuit Trip* &rarr; Stage `RateLimit` drops to 0 &rarr; Live Probe confirms `HTTP 429`. |
+| **Live Web Approval** | Open [Fuse Console](https://main.d1hndpgpwb40h8.amplifyapp.com) | Click *Approve Circuit Trip* &rarr; Stage `RateLimit` drops to 0 &rarr; Live Probe confirms `HTTP 429`. |
 | **Automated End-to-End** | `python scripts/test_day3_remediation.py` | Automated validation of approval, stage mutation, and curl 429 verification. |
 | **Clean Slate Reset** | `python scripts/clear_test_data.py` | Wipes DynamoDB incident records and resets API Gateway stage throttles back to 1000/2000. |
 
@@ -140,7 +140,7 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 
 | Component | AWS Resource Name | Type / Endpoint |
 | :--- | :--- | :--- |
-| **Fuse Console** | `guardrail-dashboard-515903395012` | [S3 Static Website](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) |
+| **Fuse Console** | `fuse-console` (`d1hndpgpwb40h8`) | [AWS Amplify Hosting (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Fallback: [S3 Website](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com))* |
 | **Control Plane API** | `guardrail-control-api` (`agcki2mnvi`) | `https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod` |
 | **Protected Target API** | `guardrail-demo-api` (`poim5xmgs2`) | `https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items` |
 | **DynamoDB State** | `Incidents`, `ApprovalQueue`, `Deployments` | Amazon DynamoDB (Pay-per-request) |

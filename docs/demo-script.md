@@ -7,7 +7,7 @@
 **Team Code**: `ZK2FP6`  
 **Builder**: Pranjul Chaurasiya (`@pranjul_chaurasiya`, Solo)  
 **Target Duration**: 2 minutes 45 seconds (Strictly under the 3:00 hard ceiling)  
-**Live Console**: `http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com`  
+**Live Console**: `https://main.d1hndpgpwb40h8.amplifyapp.com`  
 **GitHub**: `https://github.com/Pranjulchaurasiya/fuse`
 
 ---
@@ -15,7 +15,7 @@
 ## Pre-Video Preparation Checklist
 1. **Clean Slate**: Run `python scripts/clear_test_data.py` to wipe DynamoDB test records and restore baseline throttle (1000/2000).
 2. **Dashboard Open**: Open the live dashboard in your browser:
-   `http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com`
+   `https://main.d1hndpgpwb40h8.amplifyapp.com`
 3. **Terminal Open**: Split screen with browser on the left, terminal on the right.
 
 ---

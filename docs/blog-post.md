@@ -3,7 +3,7 @@
 *Author: Pranjul Chaurasiya (@pranjul_chaurasiya)*  
 *Event: First Commit — Bharat Builds Tour (WeMakeDevs &times; AWS)*  
 *Track: Ship It & Best UI (Team Code: ZK2FP6)*  
-*Live Console: [http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)*  
+*Live Console: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)*  
 *Repository: [github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)*
 
 ---
@@ -147,8 +147,8 @@ Because multiple alerts can trigger simultaneously, the Remediator inspects the 
 
 ## 5. Live Dashboard on Amazon S3
 
-The operator console is hosted directly on Amazon S3 static website hosting, connecting to the isolated `guardrail-control-api` via CORS:
-* **Live Dashboard URL**: `http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com`
+The operator console is hosted directly on AWS Amplify Hosting (with Amazon S3 static website fallback), connecting to the isolated `guardrail-control-api` via CORS:
+* **Live Dashboard URL**: `https://main.d1hndpgpwb40h8.amplifyapp.com`
 * **Real Metrics**: Scorecards for evaluations monitored, runaways caught, pending approvals, and throttled stages are derived directly from DynamoDB items—no simulated counters or guessing.
 * **One-Click Approval**: Operators can review Bedrock's explanations and approve throttle actions with a single click.
 
@@ -164,5 +164,5 @@ The operator console is hosted directly on Amazon S3 static website hosting, con
 
 ## Summary Links
 * **GitHub Repository**: [https://github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)
-* **Live S3 Console**: [http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
+* **Live Console (HTTPS)**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)
 * **Region**: AWS Asia Pacific (Mumbai) `ap-south-1`
