@@ -75,6 +75,33 @@ async function fetchIncidents() {
 }
 
 /**
+ * Smoothly animates number transitions using requestAnimationFrame.
+ */
+function animateCount(el, targetVal, duration = 650) {
+  if (!el) return;
+  const startVal = parseInt(el.textContent, 10) || 0;
+  if (startVal === targetVal) {
+    el.textContent = targetVal;
+    return;
+  }
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out quad
+    const ease = 1 - (1 - progress) * (1 - progress);
+    const current = Math.round(startVal + (targetVal - startVal) * ease);
+    el.textContent = current;
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      el.textContent = targetVal;
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+/**
  * Computes metrics scorecard strictly from real DynamoDB Incidents records.
  */
 function updateMetrics(incidents) {
@@ -85,10 +112,10 @@ function updateMetrics(incidents) {
     i.action_taken === "AUTO_THROTTLED" || i.action_taken === "APPROVED_AND_THROTTLED"
   ).length;
 
-  if (metricTotal) metricTotal.textContent = total;
-  if (metricRunaways) metricRunaways.textContent = runaways;
-  if (metricPending) metricPending.textContent = pending;
-  if (metricThrottled) metricThrottled.textContent = throttled;
+  animateCount(metricTotal, total);
+  animateCount(metricRunaways, runaways);
+  animateCount(metricPending, pending);
+  animateCount(metricThrottled, throttled);
 
   if (tilePending) {
     if (pending > 0) {
@@ -402,6 +429,73 @@ async function probeTargetApi() {
   }
 }
 
+// Motion & 3D Interactivity
+/**
+ * Initializes IntersectionObserver for scroll-triggered reveal animations.
+ */
+function initScrollReveal() {
+  const revealElements = document.querySelectorAll(".reveal-on-scroll");
+  if (!revealElements.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    revealElements.forEach(el => el.classList.add("is-revealed"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-revealed");
+        obs.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.08,
+    rootMargin: "0px 0px -30px 0px"
+  });
+
+  revealElements.forEach(el => observer.observe(el));
+}
+
+/**
+ * Initializes 3D tactile perspective tilt on cursor movement.
+ */
+function init3DTilt() {
+  // 1. Hero visual wrapper 3D depth tilt
+  const heroWrapper = document.querySelector(".visual-wrapper");
+  if (heroWrapper) {
+    heroWrapper.addEventListener("mousemove", (e) => {
+      const rect = heroWrapper.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotX = -((y / (rect.height / 2)) * 7).toFixed(2);
+      const rotY = ((x / (rect.width / 2)) * 7).toFixed(2);
+      heroWrapper.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.02, 1.02, 1.02)`;
+    });
+
+    heroWrapper.addEventListener("mouseleave", () => {
+      heroWrapper.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
+    });
+  }
+
+  // 2. Cards subtle tactile 3D tilt
+  const tiltCards = document.querySelectorAll(".tilt-3d");
+  tiltCards.forEach(card => {
+    card.addEventListener("mousemove", (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotX = -((y / (rect.height / 2)) * 3.5).toFixed(2);
+      const rotY = ((x / (rect.width / 2)) * 3.5).toFixed(2);
+      card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-2px)`;
+    });
+
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0)";
+    });
+  });
+}
+
 // Event Listeners
 if (refreshBtn) refreshBtn.addEventListener("click", fetchIncidents);
 if (btnProbeTarget) btnProbeTarget.addEventListener("click", probeTargetApi);
@@ -412,3 +506,5 @@ autoRefreshTimer = setInterval(fetchIncidents, POLL_INTERVAL_MS);
 // Initial Load
 fetchIncidents();
 probeTargetApi();
+initScrollReveal();
+init3DTilt();
