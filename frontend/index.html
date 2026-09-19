@@ -3,97 +3,180 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AWS Cost Guardrail // Telemetry Console</title>
+  <title>Fuse — Autonomous AWS Cost Guardrail</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="crt-overlay"></div>
-
-  <div class="terminal-frame">
-    <!-- Terminal Titlebar -->
-    <header class="terminal-header">
-      <div class="header-main">
-        <div class="terminal-prompt-tag">&gt;_ GUARDRAIL_DAEMON</div>
-        <div>
-          <h1 class="terminal-title">AWS COST GUARDRAIL // INCIDENT RESPONSE STREAM</h1>
-          <div class="terminal-meta-line">
-            <span class="meta-item">REGION: <strong class="text-mono">ap-south-1</strong></span>
-            <span class="meta-divider">|</span>
-            <span class="meta-item">TARGET: <strong class="text-mono">guardrail-demo-api</strong></span>
-            <span class="meta-divider">|</span>
-            <span class="meta-item">MODEL: <strong class="text-mono">Bedrock (Nova Micro)</strong></span>
-            <span class="meta-divider">|</span>
-            <span class="meta-status"><span class="beacon-dot"></span> LIVE POLLING (6s)</span>
+  <div class="page-wrapper">
+    <!-- Navigation Bar -->
+    <header class="navbar">
+      <div class="nav-container">
+        <div class="brand-group">
+          <div class="brand-mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v4"/>
+              <path d="M12 16h.01"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">FUSE</div>
+            <div class="brand-sub">AWS Cost Guardrail</div>
           </div>
         </div>
-      </div>
 
-      <div class="header-controls">
-        <div class="env-toggle">
-          <label for="env-filter">[STAGE]:</label>
-          <select id="env-filter" class="terminal-select">
-            <option value="all">ALL_STAGES</option>
-            <option value="prod" selected>PROD</option>
-            <option value="dev">DEV</option>
-          </select>
+        <div class="nav-actions">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span class="status-text">ap-south-1 Active</span>
+          </div>
+
+          <div class="filter-wrapper">
+            <label for="env-filter" class="filter-label">Stage:</label>
+            <select id="env-filter" class="filter-select">
+              <option value="all">All Stages</option>
+              <option value="prod" selected>prod</option>
+              <option value="dev">dev</option>
+            </select>
+          </div>
+
+          <button id="refresh-btn" class="btn btn-refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Sync Telemetry
+          </button>
         </div>
-        <button id="refresh-btn" class="terminal-btn btn-sync">
-          [SYNC_NOW]
-        </button>
       </div>
     </header>
 
-    <!-- Telemetry Readout Grid -->
-    <section class="telemetry-bar">
-      <div class="telemetry-cell">
-        <span class="cell-label">// TOTAL EVALS</span>
-        <span class="cell-val" id="metric-total">0</span>
-        <span class="cell-foot">1-MIN EVENTBRIDGE CYCLES</span>
-      </div>
-      <div class="telemetry-cell">
-        <span class="cell-label">// RUNAWAYS CAUGHT</span>
-        <span class="cell-val text-white" id="metric-runaways">0</span>
-        <span class="cell-foot">SINGLE-CALLER LOOPS</span>
-      </div>
-      <div class="telemetry-cell cell-pending">
-        <span class="cell-label">// PENDING APPROVAL</span>
-        <span class="cell-val text-accent" id="metric-pending">0</span>
-        <span class="cell-foot">PROD GATE HOLDS</span>
-      </div>
-      <div class="telemetry-cell">
-        <span class="cell-label">// STAGES THROTTLED</span>
-        <span class="cell-val text-white" id="metric-throttled">0</span>
-        <span class="cell-foot">RATELIMIT &rarr; 0</span>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-container">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <span class="badge-tag">AUTONOMOUS CIRCUIT BREAKER</span>
+            <span class="badge-sub">Amazon Bedrock + EventBridge</span>
+          </div>
+          <h1 class="hero-title">Fuse stops runaway cloud costs before they multiply.</h1>
+          <p class="hero-desc">
+            A context-aware safety guardrail for serverless APIs. Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash sales from recursive client loops.
+          </p>
+
+          <div class="hero-features">
+            <div class="feature-item">
+              <span class="feature-bullet"></span>
+              <span>Single-turn Bedrock Converse toolConfig</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-bullet"></span>
+              <span>Isolated Control Plane API Gateway</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-bullet"></span>
+              <span>Zero request-time latency overhead</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="visual-card">
+            <img src="assets/fuse_hero_3d.jpg" alt="Fuse 3D Architecture Shield" class="hero-3d-img" />
+            <div class="visual-badge badge-top">
+              <span class="badge-dot-live"></span>
+              <span>Live Evaluation Loop</span>
+            </div>
+            <div class="visual-badge badge-bottom">
+              <span class="badge-mono">Throttle Target: RateLimit &rarr; 0</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Timeline Log Stream -->
-    <main class="timeline-section">
-      <div class="stream-banner">
-        <span class="stream-title">&gt;&gt; REALTIME TIMELINE LOG (CHRONOLOGICAL REVERSE)</span>
-        <span class="stream-count" id="feed-count">COUNT: 0 ENTRIES</span>
-      </div>
+    <!-- Metrics Scorecard (Bento Tiles) -->
+    <section class="metrics-section">
+      <div class="metrics-container">
+        <div class="metric-card">
+          <div class="metric-head">
+            <span class="metric-title">Evaluations Monitored</span>
+            <span class="metric-pill">EventBridge</span>
+          </div>
+          <div class="metric-value" id="metric-total">0</div>
+          <div class="metric-footnote">1-minute CloudWatch polling cycles</div>
+        </div>
 
-      <!-- Left-anchored Vertical Timeline -->
-      <div class="timeline-track" id="incidents-container">
-        <div class="terminal-loading">
-          <span class="cursor-blink">&gt; CONNECTING TO CONTROL PLANE API..._</span>
+        <div class="metric-card">
+          <div class="metric-head">
+            <span class="metric-title">Runaways Detected</span>
+            <span class="metric-pill pill-red">Bedrock</span>
+          </div>
+          <div class="metric-value" id="metric-runaways">0</div>
+          <div class="metric-footnote">Single-caller recursive loops caught</div>
+        </div>
+
+        <div class="metric-card metric-amber" id="card-pending-metric">
+          <div class="metric-head">
+            <span class="metric-title">Pending Approvals</span>
+            <span class="metric-pill pill-amber">Prod Gate</span>
+          </div>
+          <div class="metric-value" id="metric-pending">0</div>
+          <div class="metric-footnote">Withheld from auto-throttling</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <span class="metric-title">Stages Throttled</span>
+            <span class="metric-pill pill-blue">Remediated</span>
+          </div>
+          <div class="metric-value" id="metric-throttled">0</div>
+          <div class="metric-footnote">RateLimit & BurstLimit set to 0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Incident Stream Section -->
+    <main class="stream-section">
+      <div class="stream-container">
+        <div class="stream-header">
+          <div class="stream-title-group">
+            <h2 class="stream-heading">Incident Response Stream</h2>
+            <span class="stream-count" id="feed-count">0 incidents</span>
+          </div>
+          <div class="stream-status">
+            <span class="auto-sync-dot"></span>
+            <span>Auto-polling active (6s)</span>
+          </div>
+        </div>
+
+        <!-- Incidents List Container -->
+        <div id="incidents-container" class="incidents-list">
+          <div class="loading-box">
+            <div class="spinner"></div>
+            <p>Connecting to Fuse Control Plane API...</p>
+          </div>
         </div>
       </div>
     </main>
 
-    <!-- Terminal Footer -->
-    <footer class="terminal-footer">
-      <div class="footer-left">
-        <span>AWS COST GUARDRAIL // BHARAT BUILDS TOUR HACKATHON (SHIP IT TRACK)</span>
-      </div>
-      <div class="footer-right">
-        <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">[SRC_REPO]</a>
-        <span>&bull;</span>
-        <span>ISOLATED_CONTROL_PLANE: agcki2mnvi</span>
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-left">
+          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; First Commit Bharat Builds Tour (Ship It Track) &bull; Pranjul Chaurasiya
+        </div>
+        <div class="footer-right">
+          <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">GitHub Repository</a>
+          <span>&bull;</span>
+          <span>Amazon Bedrock Converse</span>
+          <span>&bull;</span>
+          <span>DynamoDB</span>
+        </div>
       </div>
     </footer>
   </div>

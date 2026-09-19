@@ -1,6 +1,6 @@
 /**
- * app.js — Terminal Incident Response Stream Controller
- * Connects directly to AWS Cost Guardrail Control Plane API (ap-south-1)
+ * app.js — Fuse Incident Response Stream Controller
+ * Connects to AWS Cost Guardrail Control Plane API (ap-south-1)
  */
 
 const CONTROL_API_BASE = "https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod";
@@ -19,23 +19,23 @@ const envFilter = document.getElementById("env-filter");
 const refreshBtn = document.getElementById("refresh-btn");
 
 /**
- * Formats epoch timestamp into clean terminal time string.
+ * Formats epoch timestamp into clean local time string.
  */
 function formatTimestamp(epochSec) {
-  if (!epochSec) return "[--:--:--]";
+  if (!epochSec) return "--:--:--";
   const date = new Date(Number(epochSec) * 1000);
-  return `[${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}]`;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
 /**
- * Formats date into relative time string (e.g. '2m ago').
+ * Formats epoch timestamp into relative time (e.g. '2m ago').
  */
 function formatRelativeTime(epochSec) {
   if (!epochSec) return "";
   const diffSec = Math.floor(Date.now() / 1000 - Number(epochSec));
-  if (diffSec < 60) return `-${Math.max(1, diffSec)}s`;
-  if (diffSec < 3600) return `-${Math.floor(diffSec / 60)}m`;
-  return `-${Math.floor(diffSec / 3600)}h`;
+  if (diffSec < 60) return `${Math.max(1, diffSec)}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  return `${Math.floor(diffSec / 3600)}h ago`;
 }
 
 /**
@@ -61,9 +61,9 @@ async function fetchIncidents() {
     console.error("Failed to fetch incidents:", err);
     if (allIncidents.length === 0) {
       container.innerHTML = `
-        <div class="terminal-empty">
-          <p style="color: var(--accent-amber);">[ERROR] CONTROL_PLANE_UNREACHABLE: ${escapeHtml(err.message)}</p>
-          <button class="terminal-btn" onclick="fetchIncidents()" style="margin-top: 10px;">[RETRY_CONNECTION]</button>
+        <div class="empty-box">
+          <p style="color: var(--status-runaway); font-weight: 600;">Control Plane Unreachable: ${escapeHtml(err.message)}</p>
+          <button class="btn btn-refresh" onclick="fetchIncidents()" style="margin-top: 10px;">Retry Connection</button>
         </div>
       `;
     }
@@ -90,40 +90,47 @@ function updateMetrics(incidents) {
 }
 
 /**
- * Renders the timeline feed based on current environment filter.
+ * Renders the incident feed based on current environment filter.
  */
 function renderFeed() {
-  const filterVal = envFilter.value;
+  const filterVal = envFilter ? envFilter.value : "all";
   const filtered = allIncidents.filter(inc => {
     if (filterVal === "all") return true;
     const env = (inc.environment || "prod").toLowerCase();
     return env === filterVal.toLowerCase();
   });
 
-  if (feedCount) feedCount.textContent = `COUNT: ${filtered.length} ENTRIES`;
+  if (feedCount) {
+    feedCount.textContent = `${filtered.length} incident${filtered.length === 1 ? "" : "s"}`;
+  }
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="terminal-empty">
-        <p>&gt; NO INCIDENTS RECORDED FOR STAGE [${escapeHtml(filterVal).toUpperCase()}]</p>
-        <span style="font-size: 11px; color: var(--text-subtle);">Run load_test_runaway.py or await the next 1-min EventBridge cycle.</span>
+      <div class="empty-box">
+        <p style="font-weight: 600; color: var(--text-main);">No incidents recorded for stage [${escapeHtml(filterVal).toUpperCase()}]</p>
+        <span style="font-size: 13px; color: var(--text-subtle);">Run load_test_runaway.py or await the next 1-minute EventBridge evaluation cycle.</span>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = filtered.map(inc => renderTimelineEntry(inc)).join("");
+  container.innerHTML = filtered.map(inc => renderIncidentCard(inc)).join("");
 }
 
 /**
- * Generates HTML for a single vertical timeline entry.
+ * Generates HTML for a single incident card matching the light editorial theme.
+ * Strictly zero emojis.
  */
-function renderTimelineEntry(inc) {
+function renderIncidentCard(inc) {
   const isRunaway = inc.classification === "RUNAWAY";
   const isPending = inc.action_taken === "PENDING_APPROVAL";
   const stage = (inc.environment || "prod").toUpperCase();
-  const entryClass = isPending ? "timeline-entry entry-pending" : "timeline-entry";
   
+  let cardStateClass = isRunaway ? "card-runaway" : "card-normal";
+  if (isPending) {
+    cardStateClass = "card-pending";
+  }
+
   const snapshot = inc.metric_snapshot || {};
   const callers = snapshot.unique_callers ?? "N/A";
   const count = snapshot.count ?? "0";
@@ -134,68 +141,84 @@ function renderTimelineEntry(inc) {
   let actionHtml = "";
   if (isPending) {
     actionHtml = `
-      <div class="pending-alert-badge">
-        <span class="terminal-cursor">&#9608;</span>
-        <span>AWAITING HUMAN INTERVENTION // REASON: PROD_SAFETY_GATE</span>
+      <div class="action-label-box text-pending">
+        <span class="dot-amber"></span>
+        <span>AWAITING APPROVAL // PRODUCTION SAFETY GATE</span>
       </div>
-      <button class="btn-approve-terminal" onclick="approveIncident('${inc.incident_id}', this)">
-        [ EXECUTE THROTTLE: RATE &rarr; 0 ]
+      <button class="btn btn-approve" onclick="approveIncident('${inc.incident_id}', this)">
+        Approve Throttle (Rate &rarr; 0)
       </button>
     `;
   } else if (inc.action_taken === "AUTO_THROTTLED") {
     actionHtml = `
-      <span class="action-status-text text-white">
-        [&#9889; AUTO_THROTTLED (${stage}) &mdash; ZERO HUMAN LATENCY]
-      </span>
-      <span style="font-size: 10px; color: var(--text-subtle);">RATELIMIT: 0 &bull; BURST: 0</span>
+      <div class="action-label-box text-throttled">
+        <span>AUTO-THROTTLED (${escapeHtml(stage)}) &mdash; ZERO HUMAN LATENCY</span>
+      </div>
     `;
   } else if (inc.action_taken === "APPROVED_AND_THROTTLED") {
     actionHtml = `
-      <span class="action-status-text text-white">
-        [&check; APPROVED_AND_THROTTLED &mdash; 429 TOO MANY REQUESTS ACTIVE]
-      </span>
-      <span style="font-size: 10px; color: var(--text-subtle);">RESOLVER: OPERATOR</span>
+      <div class="action-label-box text-throttled">
+        <span>APPROVED &amp; THROTTLED &mdash; 429 TOO MANY REQUESTS ACTIVE</span>
+      </div>
     `;
   } else {
     actionHtml = `
-      <span class="action-status-text">
-        [&check; VERIFIED_NORMAL &mdash; NO ACTION REQUIRED]
-      </span>
-      <span style="font-size: 10px; color: var(--text-subtle);">BASELINE INTACT</span>
+      <div class="action-label-box text-normal">
+        <span>VERIFIED NORMAL &mdash; BASELINE INTACT</span>
+      </div>
     `;
   }
 
   return `
-    <article class="${entryClass}" id="entry-${inc.incident_id}">
-      <div class="entry-header-row">
-        <div class="entry-classification ${isRunaway ? "class-runaway" : "class-normal"}">
-          [${escapeHtml(inc.classification)}]
+    <article class="incident-card ${cardStateClass}" id="card-${inc.incident_id}">
+      <div class="card-header-row">
+        <div class="card-header-left">
+          <span class="status-badge ${isRunaway ? "badge-runaway" : "badge-normal"}">
+            [${escapeHtml(inc.classification)}]
+          </span>
+          <span class="tag-stage">${escapeHtml(stage)}</span>
+          <span class="tag-resource">${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
         </div>
-        <div class="entry-axis-time">
-          ${formatTimestamp(inc.timestamp)} <span style="color: var(--text-subtle);">${formatRelativeTime(inc.timestamp)}</span>
-          <span class="entry-stage-tag">// ${escapeHtml(stage)}</span>
-          <span class="entry-stage-tag">// ${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
+        <div class="card-timestamp">
+          ${formatTimestamp(inc.timestamp)} (${formatRelativeTime(inc.timestamp)})
         </div>
       </div>
 
-      <div class="entry-explanation">
-        &gt; ${escapeHtml(inc.bedrock_explanation || inc.explanation || "No explanation recorded.")}
+      <div class="card-explanation">
+        ${escapeHtml(inc.bedrock_explanation || inc.explanation || "No explanation recorded.")}
       </div>
 
-      <div class="entry-telemetry-row">
-        <span class="telemetry-item">CALLERS: <strong>${escapeHtml(String(callers))}</strong></span>
-        <span class="telemetry-item">COUNT: <strong>${escapeHtml(String(count))}/MIN</strong></span>
-        <span class="telemetry-item">BASELINE: <strong>${escapeHtml(String(baseline))}/MIN</strong></span>
-        <span class="telemetry-item">DELTA: <strong class="telemetry-delta ${Number(delta) > 0 ? "text-white" : ""}">${Number(delta) > 0 ? "+" : ""}${escapeHtml(String(delta))}</strong></span>
-        <span class="telemetry-item">CONFIDENCE: <strong>${escapeHtml(confidence)}</strong></span>
+      <div class="telemetry-cluster">
+        <div class="tele-pill">
+          <span class="tele-label">Unique Callers</span>
+          <span class="tele-val">${escapeHtml(String(callers))}</span>
+        </div>
+        <div class="tele-pill">
+          <span class="tele-label">Traffic Count</span>
+          <span class="tele-val">${escapeHtml(String(count))}/min</span>
+        </div>
+        <div class="tele-pill">
+          <span class="tele-label">Rolling Baseline</span>
+          <span class="tele-val">${escapeHtml(String(baseline))}/min</span>
+        </div>
+        <div class="tele-pill">
+          <span class="tele-label">Traffic Delta</span>
+          <span class="tele-val ${Number(delta) > 0 ? "delta-pos" : ""}">${Number(delta) > 0 ? "+" : ""}${escapeHtml(String(delta))}</span>
+        </div>
+        <div class="tele-pill">
+          <span class="tele-label">Confidence</span>
+          <span class="tele-val">${escapeHtml(confidence)}</span>
+        </div>
       </div>
 
-      <div class="entry-action-row">
-        ${actionHtml}
-        <button class="btn-raw-toggle" onclick="toggleRawDrawer('${inc.incident_id}')">[RAW_DATA]</button>
+      <div class="card-action-bar">
+        <div class="action-left">
+          ${actionHtml}
+        </div>
+        <button class="btn-inspect" onclick="toggleRawDrawer('${inc.incident_id}')">Inspect JSON</button>
       </div>
 
-      <div class="entry-raw-drawer" id="raw-${inc.incident_id}">
+      <div class="raw-drawer" id="raw-${inc.incident_id}">
         <pre>${escapeHtml(JSON.stringify(inc, null, 2))}</pre>
       </div>
     </article>
@@ -209,14 +232,14 @@ async function approveIncident(incidentId, btnElement) {
   if (!btnElement) return;
   const origText = btnElement.textContent;
   btnElement.disabled = true;
-  btnElement.textContent = "[ EXECUTING THROTTLE... ]";
+  btnElement.textContent = "Executing Throttle...";
 
   try {
     const res = await fetch(`${CONTROL_API_BASE}/incidents/${incidentId}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        resolved_by: "Operator Console",
+        resolved_by: "Fuse Operator Console",
         decision: "APPROVED"
       })
     });
@@ -234,7 +257,7 @@ async function approveIncident(incidentId, btnElement) {
     updateMetrics(allIncidents);
     renderFeed();
   } catch (err) {
-    alert(`FAILED TO EXECUTE APPROVAL: ${err.message}`);
+    alert(`Failed to execute approval: ${err.message}`);
     btnElement.disabled = false;
     btnElement.textContent = origText;
   }

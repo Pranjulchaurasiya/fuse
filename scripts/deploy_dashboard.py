@@ -75,6 +75,7 @@ def upload_files():
         ("index.html", "text/html"),
         ("styles.css", "text/css"),
         ("app.js", "application/javascript"),
+        ("assets/fuse_hero_3d.jpg", "image/jpeg"),
     ]
 
     for fname, ctype in files_to_upload:
