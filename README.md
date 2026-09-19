@@ -4,6 +4,8 @@
 > Built for **First Commit — Bharat Builds Tour 2026 (Ship It Track)**  
 > Builder: **Pranjul Chaurasiya** (@pranjul_chaurasiya | Team Code: `ZK2FP6`)
 
+[Live Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+
 [![Live Console](https://img.shields.io/badge/Live_Console-S3_Static_Website-blue?style=for-the-badge&logo=amazons3)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
@@ -18,6 +20,14 @@ Serverless auto-scaling hides runaway loops. An infinite client retry loop, expo
 Traditional CloudWatch static alarms (*"if requests > 100/min then alarm"*) create an impossible operational tradeoff:
 * **False Positives**: During a legitimate marketing launch or flash sale with 1,000 unique buyers, a static alarm trips and throttles paying customers.
 * **Slow Remediation**: By the time an on-call engineer wakes up, reads an SNS email, and manually updates stage throttling, the damage is already done.
+
+### Strategy vs. Production Outcome
+
+| Defense Strategy | Legitimate Flash Surge (1,000 unique callers) | Recursive Runaway Loop (1 caller, rapid retries) | Production Outcome |
+| :--- | :---: | :---: | :--- |
+| **No Guardrail** | Normal operation | Thousands of dollars billed in minutes | Unbounded financial liability |
+| **Naive Static Alarm** (`Count > 100`) | **Tripped & Throttled (False Outage)** | Throttled (after alert delay) | Kills revenue during marketing launches |
+| **Fuse (Bedrock Sentinel)** | **Passed (Baseline preserved)** | **Tripped (RateLimit &rarr; 0)** | **Zero false outages, automated containment** |
 
 **Fuse** solves this by evaluating multi-dimensional context: **caller diversity**, **traffic deltas**, and **deployment heartbeats** using Amazon Bedrock to distinguish between legitimate business surges and destructive single-caller runaway loops in seconds.
 
@@ -105,6 +115,9 @@ If Bedrock encounters network timeouts, regional throttling, or invalid configur
 
 ### 5. Strict Idempotency
 `guardrail-remediator` inspects stage method settings first. If `rateLimit == 0.0` and `burstLimit == 0`, it returns `ALREADY_THROTTLED` as a no-op without duplicate API calls or state mutation.
+
+### 6. Independent Edge Observation Principle
+Remediation effectiveness is never determined from self-reported Lambda logs or client callback assertions. Fuse independently verifies throttle state directly at the AWS API Gateway regional edge via live `HTTP 429 Too Many Requests` responses. If the edge does not return 429, the circuit trip is not considered complete.
 
 ---
 

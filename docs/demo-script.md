@@ -39,11 +39,11 @@
 **[Screen]**: Show terminal running `python scripts/simulate_naive_threshold.py`.
 
 **[Voiceover]**:
-> "Serverless architecture is incredible until an infinite client retry loop racks up a surprise $5,000 AWS bill overnight. 
+> "Serverless architecture is incredible until an infinite client retry loop or runaway agent racks up a surprise $5,000 AWS bill overnight. You don't find out until your billing alarm emails you at 3 AM.
 > 
-> Traditional CloudWatch alarms only look at raw numbers—if requests exceed 30 per minute, they fire. But look at this simulation: during a flash sale with 35 real buyers, a static threshold breaks production for paying customers—a false positive. Yet during an actual runaway loop, it doesn't give you context or safe remediation.
+> Look at this comparison: Traditional CloudWatch static alarms only count raw requests. During a marketing flash sale with 1,000 real buyers, a static alarm trips and kills paying customers—a catastrophic false-positive outage. But during a real runaway loop, it offers zero caller context and zero automated remediation.
 > 
-> Meet **AWS Cost Guardrail Agent**—an autonomous, context-aware circuit breaker powered by Amazon Bedrock."
+> Meet **Fuse**—an autonomous, context-aware circuit breaker for AWS APIs powered by Amazon Bedrock."
 
 ---
 
@@ -52,18 +52,18 @@
 **[Screen]**: Run `python scripts/load_test_legit.py` in the terminal.
 
 **[Voiceover]**:
-> "Let's test Scenario 1: A legitimate marketing spike. 
+> "Let's test Scenario 1: A legitimate traffic surge.
 > 
-> We fire 35 requests into our demo API Gateway endpoint. Notice each request originates from a unique IP and caller ID, carrying varied search and shopping payloads.
+> We fire 35 requests into our demo API Gateway endpoint. Notice each request originates from a unique IP and caller ID, carrying diverse search and catalog payloads.
 > 
-> Every minute, an EventBridge schedule triggers our lightweight Poller Lambda. It queries CloudWatch metrics and checks DynamoDB for recent deployment heartbeats. 
+> Every minute, an EventBridge schedule triggers our lightweight Poller Lambda. It queries CloudWatch metrics and checks DynamoDB for recent deployment heartbeats.
 > 
-> When Bedrock evaluates this cycle, it examines caller diversity and recent deploy context. Let's switch to our live dashboard..."
+> When Bedrock evaluates this cycle, it correlates caller diversity with deployment context. Let's switch to our live Fuse Console..."
 
-**[Screen]**: Browser showing incident feed auto-updating. The new green card appears.
+**[Screen]**: Browser showing incident feed auto-updating. The new card appears with `[NORMAL]`.
 
 **[Voiceover]**:
-> "Boom! Bedrock classifies the traffic as **NORMAL** with 98% confidence: *'Spike consists of 35 distinct callers with diverse queries.'* Zero disruption, zero false alarm."
+> "Bedrock classifies the traffic as **NORMAL** with 98% confidence: *'Traffic surge consists of distinct callers with diverse payloads.'* Baseline stays intact, zero false alarm, zero customer disruption."
 
 ---
 
@@ -72,29 +72,29 @@
 **[Screen]**: Run `python scripts/load_test_runaway.py` in the terminal.
 
 **[Voiceover]**:
-> "Now, Scenario 2: A developer deploys a buggy client that enters a recursive infinite retry loop. 
+> "Now, Scenario 2: A developer deploys a client with an unhandled retry loop without backoff jitter.
 > 
-> Here we send 40 rapid requests—all from a single caller ID with identical stuck payloads.
+> We fire 40 rapid requests—all from a single caller ID with identical stuck payloads.
 > 
 > Our Poller detects the volume spike and passes the snapshot to our Reasoner Lambda. Bedrock's Converse API immediately identifies the anomaly signature as **RUNAWAY**."
 
-**[Screen]**: Switch to Dashboard. A prominent card appears with an amber pulsing dot and badge `[PENDING HUMAN APPROVAL]`.
+**[Screen]**: Switch to Dashboard. An incident card appears with `[RUNAWAY]` and status `AWAITING APPROVAL // PRODUCTION SAFETY GATE`.
 
 **[Voiceover]**:
-> "Because this is our production workload, our safety guardrail **withholds automated throttling**. In dev or staging, it auto-throttles instantly. In prod, human judgement is protected.
+> "Because this is our production workload, our safety guardrail **withholds automated throttling**. In dev or staging, it auto-throttles directly. In production, human judgment is protected.
 > 
-> Notice the demo API is still responding normally right now. But as an operator, I see Bedrock's explanation: *'Single caller, identical retry payload, no deployment event.'*
+> The target API is still serving traffic right now. As the operator, I inspect Bedrock's synthesis: *'Single caller, identical retry payload, no deployment event.'*
 > 
-> I click **Approve Throttle**..."
+> I click **Approve Circuit Trip**..."
 
-**[Action]**: Click the **Approve Throttle** button in the dashboard. Button shows spinner, then transitions to `✓ Approved & Throttled`.
+**[Action]**: Click the **Approve Circuit Trip — Set RateLimit to 0** button in the dashboard. Card transitions to `APPROVED & THROTTLED`.
 
-**[Screen]**: Switch to terminal and run `curl.exe -i https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items`.
+**[Screen]**: Click **Probe Target API Now** in the dashboard sidebar, and verify `HTTP 429 Too Many Requests`. Also show terminal running `curl.exe -i https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items`.
 
 **[Voiceover]**:
-> "Our Remediator Lambda instantly patches the API Gateway stage throttle to 0. 
+> "Our Remediator Lambda immediately patches the API Gateway stage throttle to 0.
 > 
-> Let's test the live endpoint: **HTTP 429 Too Many Requests**. The runaway loop is severed before the bill can multiply!"
+> We follow the independent observation principle: we verify the throttle directly at the regional API Gateway edge. Both our live probe and raw curl confirm: **HTTP 429 Too Many Requests**. The runaway loop is severed before the bill can multiply!"
 
 ---
 
@@ -103,11 +103,11 @@
 **[Screen]**: Show [ARCHITECTURE.md](file:///c:/Users/pranj/Documents/Fuse/ARCHITECTURE.md) diagram or GitHub repository.
 
 **[Voiceover]**:
-> "Here's what makes this architecture production-grade:
+> "Here's what makes Fuse production-grade:
 > 
-> 1. **Isolated Control Plane**: The dashboard and approval endpoints live on a completely separate API Gateway from the protected workload. Throttling the demo API never bricks our operator console.
-> 2. **Single-Turn Structured Bedrock**: We invoke Bedrock Converse exactly once per cycle using toolConfig, returning strict JSON (`classification`, `confidence`, `explanation`). No expensive agent loops.
-> 3. **Fail-Closed Fallback**: If Bedrock ever times out or has a network glitch, our reasoner safely defaults to RUNAWAY—guaranteeing cost protection."
+> 1. **Isolated Control Plane**: The dashboard and approval endpoints run on a completely separate API Gateway. Throttling the demo workload never locks the operator out of the control room.
+> 2. **Single-Turn Structured Bedrock**: We invoke Bedrock Converse exactly once per cycle using toolConfig, enforcing typed JSON without expensive multi-turn loops.
+> 3. **Fail-Closed Cost Safety**: If Bedrock ever times out, our reasoner safely defaults to RUNAWAY—guaranteeing cost protection is never compromised."
 
 ---
 
@@ -116,9 +116,9 @@
 **[Screen]**: Display GitHub repo (`github.com/Pranjulchaurasiya/fuse`) and live S3 dashboard URL.
 
 **[Voiceover]**:
-> "AWS Cost Guardrail turns cloud cost protection from dumb static alarms into intelligent, context-aware circuit breakers.
+> "Fuse transforms cloud cost governance from brittle static alarms into intelligent, context-aware circuit breakers.
 > 
-> The code, architecture docs, and live dashboard are available on GitHub. Thank you!"
+> Deployed live on AWS in ap-south-1. The code, architecture docs, and live console are available on GitHub. Thank you!"
 
 ---
 
