@@ -75,7 +75,7 @@ flowchart TD
 
     %% Control Plane Isolation
     Dashboard -->|GET /incidents| ControlAPI
-    Dashboard -->|POST /incidents/{id}/approve| ControlAPI
+    Dashboard -->|POST /incidents/:id/approve| ControlAPI
     ControlAPI --> GetIncidents
     ControlAPI --> ApproveAction
     GetIncidents --> IncidentsTable
