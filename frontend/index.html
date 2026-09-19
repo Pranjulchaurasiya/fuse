@@ -67,12 +67,12 @@
         <!-- Telemetry Stats & Actions -->
         <div class="nav-right">
           <div class="micro-stat">
-            <span class="stat-lbl">TELEMETRY P99</span>
-            <span class="stat-val text-green">1.4ms</span>
-          </div>
-          <div class="micro-stat">
             <span class="stat-lbl">POLL CADENCE</span>
             <span class="stat-val">1-min EB</span>
+          </div>
+          <div class="micro-stat">
+            <span class="stat-lbl">SENTINEL ENGINE</span>
+            <span class="stat-val text-blue">Bedrock Haiku</span>
           </div>
           <button id="refresh-btn" class="btn btn-sync">
             <svg class="icon-sync" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -99,17 +99,17 @@
           <div class="hero-left">
             <div class="active-guard-pill">
               <span class="ping-dot"></span>
-              <span>Active Sentinel: Amazon Bedrock Converse (Nova Micro / Claude 3.5 Haiku)</span>
+              <span>Active Sentinel: Amazon Bedrock Converse (Claude 3.5 Haiku)</span>
             </div>
             <h1 class="hero-heading">Fuse stops runaway cloud costs before they multiply.</h1>
             <p class="hero-summary">
-              A context-aware circuit breaker for serverless AWS APIs. Built for <strong>First Commit (Bharat Builds Tour)</strong>, Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops in under 350ms.
+              A context-aware circuit breaker for serverless AWS APIs. Built for <strong>First Commit (Bharat Builds Tour)</strong>, Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops without inline proxy latency.
             </p>
             <div class="hero-specs-row">
               <div class="spec-card">
-                <span class="spec-label">P99 Trip Response</span>
-                <span class="spec-val">280ms</span>
-                <span class="spec-sub">SLA: &lt;350ms Enforced</span>
+                <span class="spec-label">Inspection Cadence</span>
+                <span class="spec-val">1-Minute</span>
+                <span class="spec-sub">EventBridge Rate Rule</span>
               </div>
               <div class="spec-card">
                 <span class="spec-label">Remediation Target</span>
@@ -117,9 +117,9 @@
                 <span class="spec-sub">API Gateway Stage Level</span>
               </div>
               <div class="spec-card">
-                <span class="spec-label">Evaluation Overhead</span>
-                <span class="spec-val text-green">0ms Latency</span>
-                <span class="spec-sub">Decoupled EventBridge Poller</span>
+                <span class="spec-label">Telemetry Pipeline</span>
+                <span class="spec-val text-green">Decoupled</span>
+                <span class="spec-sub">Zero Inline Proxy Overhead</span>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@
                 </div>
                 <div class="policy-item">
                   <span class="policy-key">Dev / Staging Gate</span>
-                  <span class="policy-val text-green">Auto-Throttle (Zero Latency)</span>
+                  <span class="policy-val text-green">Auto-Throttle (Direct Remediation)</span>
                 </div>
                 <div class="policy-item">
                   <span class="policy-key">Production Gate</span>

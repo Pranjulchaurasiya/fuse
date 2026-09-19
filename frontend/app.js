@@ -198,7 +198,7 @@ function renderIncidentCard(inc) {
   } else if (inc.action_taken === "AUTO_THROTTLED") {
     actionHtml = `
       <div class="action-status-chip text-crimson">
-        <span>AUTO-THROTTLED (${escapeHtml(stage)}) &mdash; RATE: 0 &bull; ZERO HUMAN LATENCY</span>
+        <span>AUTO-THROTTLED (${escapeHtml(stage)}) &mdash; RATE: 0 &bull; DIRECT REMEDIATION</span>
       </div>
     `;
   } else if (inc.action_taken === "APPROVED_AND_THROTTLED") {
