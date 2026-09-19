@@ -16,8 +16,6 @@ const metricPending = document.getElementById("metric-pending");
 const metricThrottled = document.getElementById("metric-throttled");
 const tilePending = document.getElementById("tile-pending");
 const feedCount = document.getElementById("feed-count");
-const envFilter = document.getElementById("env-filter");
-const stageTabs = document.querySelectorAll(".stage-tab");
 const refreshBtn = document.getElementById("refresh-btn");
 const ledgerList = document.getElementById("ledger-list");
 
@@ -134,31 +132,24 @@ function updateLedger(incidents) {
 }
 
 /**
- * Renders the incident feed based on current environment filter.
+ * Renders the incident feed directly.
  */
 function renderFeed() {
-  const filterVal = envFilter ? envFilter.value : "all";
-  const filtered = allIncidents.filter(inc => {
-    if (filterVal === "all") return true;
-    const env = (inc.environment || "prod").toLowerCase();
-    return env === filterVal.toLowerCase();
-  });
-
   if (feedCount) {
-    feedCount.textContent = `${filtered.length} incident${filtered.length === 1 ? "" : "s"}`;
+    feedCount.textContent = `${allIncidents.length} incident${allIncidents.length === 1 ? "" : "s"}`;
   }
 
-  if (filtered.length === 0) {
+  if (allIncidents.length === 0) {
     container.innerHTML = `
       <div class="empty-state-box">
-        <p style="font-weight: 600; color: var(--text-primary);">No incidents recorded for stage [${escapeHtml(filterVal).toUpperCase()}]</p>
+        <p style="font-weight: 600; color: var(--text-primary);">No incidents recorded</p>
         <span style="font-size: 12px; color: var(--text-muted);">Run load_test_runaway.py or await the next 1-minute EventBridge evaluation cycle.</span>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = filtered.map(inc => renderIncidentCard(inc)).join("");
+  container.innerHTML = allIncidents.map(inc => renderIncidentCard(inc)).join("");
 }
 
 /**
@@ -410,19 +401,6 @@ async function probeTargetApi() {
     if (btnProbeTarget) btnProbeTarget.disabled = false;
   }
 }
-
-// Stage Tabs Event Handlers
-stageTabs.forEach(tab => {
-  tab.addEventListener("click", () => {
-    stageTabs.forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    const stage = tab.getAttribute("data-stage");
-    if (envFilter) {
-      envFilter.value = stage;
-    }
-    renderFeed();
-  });
-});
 
 // Event Listeners
 if (refreshBtn) refreshBtn.addEventListener("click", fetchIncidents);
