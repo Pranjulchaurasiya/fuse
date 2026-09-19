@@ -1,8 +1,14 @@
-# AWS Cost Guardrail Agent — 3-Minute Demo Video Script
+# Fuse — AWS Cost Guardrail & Circuit Breaker
+## 3-Minute Demo Video Script
 
-**Track**: Ship It (First Commit — Bharat Builds Tour)  
-**Builder**: Pranjul Chaurasiya (Solo, AI-assisted)  
-**Target Duration**: 2 minutes 50 seconds (under the 3:00 hard ceiling)
+**Project**: **Fuse**  
+**Event**: First Commit — Bharat Builds Tour (WeMakeDevs &times; AWS)  
+**Track**: Ship It (First Prize) & Best UI  
+**Team Code**: `ZK2FP6`  
+**Builder**: Pranjul Chaurasiya (`@pranjul_chaurasiya`, Solo)  
+**Target Duration**: 2 minutes 45 seconds (Strictly under the 3:00 hard ceiling)  
+**Live Console**: `http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com`  
+**GitHub**: `https://github.com/Pranjulchaurasiya/fuse`
 
 ---
 

@@ -1,7 +1,9 @@
-# Building an Autonomous Serverless Cost Guardrail with Amazon Bedrock, EventBridge, and DynamoDB
+# Fuse: Building an Autonomous Serverless Cost Guardrail with Amazon Bedrock, EventBridge, and DynamoDB
 
-*Author: Pranjul Chaurasiya*  
-*Hackathon Track: First Commit — Bharat Builds Tour (Ship It)*  
+*Author: Pranjul Chaurasiya (@pranjul_chaurasiya)*  
+*Event: First Commit — Bharat Builds Tour (WeMakeDevs &times; AWS)*  
+*Track: Ship It & Best UI (Team Code: ZK2FP6)*  
+*Live Console: [http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com)*  
 *Repository: [github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)*
 
 ---
