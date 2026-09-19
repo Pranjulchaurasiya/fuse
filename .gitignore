@@ -47,3 +47,16 @@ venv.bak/
 *.log
 tmp/
 .DS_Store
+
+# Demo video recordings & raw media (do not commit)
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+*.wav
+*.mp3
+recordings/
+videos/
+demo/
+raw_takes/
