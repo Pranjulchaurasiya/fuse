@@ -8,6 +8,7 @@
 **Builder**: Pranjul Chaurasiya (`@pranjul_chaurasiya`, Solo)  
 **Target Duration**: 2 minutes 45 seconds (Strictly under the 3:00 hard ceiling)  
 **Live Console**: `https://main.d1hndpgpwb40h8.amplifyapp.com`  
+**YouTube Video**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek)  
 **GitHub**: `https://github.com/Pranjulchaurasiya/fuse`
 
 ---
@@ -39,7 +40,9 @@
 **[Screen]**: Show terminal running `python scripts/simulate_naive_threshold.py`.
 
 **[Voiceover]**:
-> "Serverless architecture is incredible until an infinite client retry loop or runaway agent racks up a surprise $5,000 AWS bill overnight. You don't find out until your billing alarm emails you at 3 AM.
+> "Hi everyone, I'm Pranjul Chaurasiya, and this is Fuse.
+> 
+> Serverless architecture is incredible until an infinite client retry loop or runaway agent racks up a surprise $5,000 AWS bill overnight. You don't find out until your billing alarm emails you at 3 AM.
 > 
 > Look at this comparison: Traditional CloudWatch static alarms only count raw requests. During a marketing flash sale with 1,000 real buyers, a static alarm trips and kills paying customers—a catastrophic false-positive outage. But during a real runaway loop, it offers zero caller context and zero automated remediation.
 > 
@@ -118,7 +121,7 @@
 **[Voiceover]**:
 > "Fuse transforms cloud cost governance from brittle static alarms into intelligent, context-aware circuit breakers.
 > 
-> Deployed live on AWS in ap-south-1. The code, architecture docs, and live console are available on GitHub. Thank you!"
+> Deployed live on AWS in ap-south-1. I'm Pranjul Chaurasiya, submitting for the Ship It track at First Commit, Bharat Builds Tour 2026. The code, architecture docs, and live console are available on GitHub. Thank you!"
 
 ---
 

@@ -98,7 +98,7 @@ python scripts/clear_test_data.py
 - [ ] Live URL (dashboard) works from a clean/incognito browser
 - [ ] GitHub repo public, README includes architecture diagram + "what we
       learned" section
-- [ ] Demo video ≤ 3 minutes, uploaded and linked
+- [x] Demo video ≤ 3 minutes, uploaded and linked: https://youtu.be/UWzPBdO63ek
 - [ ] AWS Builder Center blog post published and linked
 - [ ] All docs in this set (AGENTS/PRD/ARCHITECTURE/SCHEMA/API/TASKS/
       DESIGN/TESTING/DEPLOY) committed to the repo — judges reading the repo

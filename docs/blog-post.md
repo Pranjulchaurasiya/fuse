@@ -1,38 +1,33 @@
-# Fuse: Building an Autonomous Serverless Cost Guardrail with Amazon Bedrock, EventBridge, and DynamoDB
+# Fuse: The Cognitive Circuit Breaker for Your AWS Bill
 
-*Author: Pranjul Chaurasiya (@pranjul_chaurasiya)*  
-*Event: First Commit — Bharat Builds Tour (WeMakeDevs &times; AWS)*  
-*Track: Ship It & Best UI (Team Code: ZK2FP6)*  
+*Built by [Pranjul Chaurasiya](https://github.com/Pranjulchaurasiya) for First Commit — Bharat Builds Tour 2026 (Ship It Track).*  
 *Live Console: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)*  
-*Repository: [github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)*
+*Demo Video (2m 58s): [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek)*  
+*GitHub Repository: [github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)*
 
 ---
 
-## 1. The $5,000 Infinite Loop: Why Serverless Needs Context-Aware Protection
+## 1. The $5,000 Infinite Loop: Why Serverless Needs Cognitive Protection
 
-Serverless computing (AWS Lambda, API Gateway, DynamoDB) gives developers instant scalability and pay-per-use efficiency. But infinite scalability has a dangerous dark side: **unbounded financial liability**.
+Serverless architectures built on **AWS Lambda**, **Amazon API Gateway**, and **Amazon DynamoDB** give engineering teams instant scalability and pay-per-use economics. However, automatic scaling has a dangerous operational blind spot: **unbounded financial liability**.
 
-A subtle bug in a client SDK, an exponential backoff that forgets jitter, or a recursive retry loop between microservices can fire thousands of requests per second into an API. Because serverless scales seamlessly, AWS dutifully processes every single request—and generates a massive bill while you sleep.
+A subtle bug in a client SDK, an exponential backoff algorithm without jitter, or a recursive agent loop can blast thousands of requests per second into your API. Because AWS serverless primitives scale seamlessly to meet demand, the platform will process every single request—leaving you with a massive cloud bill by morning.
 
-### The Dilemma of Static CloudWatch Alarms
-The standard defense is a CloudWatch Alarm: *"If Request Count > 1,000 over 5 minutes, trigger an alert."*
+### The Dilemma of Static Alarms
+The conventional defense is a static CloudWatch alarm:  
+`If Request Count > 1,000 over 5 minutes, trigger an alert.`
 
-However, static alarms suffer from a fundamental trade-off:
-1. **False Positives (The Flash Sale Disaster)**: If your marketing team launches a flash sale, 1,000 real paying users arrive at once. A naive alarm trips and triggers auto-throttling, breaking production for your best customers.
-2. **Delayed Response**: By the time an on-call engineer wakes up to a PagerDuty alert, logs into the AWS Management Console, diagnoses the anomaly, and manually adjusts stage throttle limits, thousands of dollars have already burned.
+In real-world production, this creates an impossible trade-off:
+1. **False Positives (The Flash Sale Outage)**: When your marketing team launches a campaign and 1,000 legitimate, paying customers hit checkout simultaneously, a static threshold trips and cuts off your highest-value traffic.
+2. **Alert Lag**: By the time an on-call engineer gets paged, logs into the AWS console, reviews metrics, and manually applies stage throttling, thousands of dollars have already been burned.
 
-To solve this, we built **AWS Cost Guardrail Agent**—an autonomous, context-aware circuit breaker that uses Amazon Bedrock to distinguish between legitimate business surges and destructive runaway loops, remediating anomalies in seconds.
+To solve this, I built **Fuse**—an autonomous, context-aware circuit breaker that uses **Amazon Bedrock** to distinguish between authentic traffic surges and destructive runaway loops in under 60 seconds.
 
 ---
 
-## 2. Architecture Overview
+## 2. Architecture & Design Principles
 
-To maintain safety and zero framework sprawl during a 4-day sprint, the architecture follows five core principles:
-1. **Single Responsibility Lambdas**: Detection, reasoning, remediation, and human approval are cleanly separated.
-2. **Isolated Control Plane**: The operator dashboard and approval endpoints live on a completely separate API Gateway from the protected workload. Throttling the application API never breaks the control plane.
-3. **No Request-Time Latency**: The guardrail does not sit inline in the request path; it polls CloudWatch metrics asynchronously every minute via EventBridge.
-4. **Context-Rich Heartbeats**: Deployments write a heartbeat to DynamoDB (`Deployments`), allowing Bedrock to correlate spikes with recent software releases.
-5. **Fail-Closed Cost Safety**: If Bedrock ever encounters a network timeout or service quota limit, the reasoner defaults to `RUNAWAY` to guarantee financial safety.
+Fuse operates completely out-of-band to introduce **zero latency** to your user-facing request path.
 
 ```
                     ┌────────────────────────────┐
@@ -44,7 +39,7 @@ To maintain safety and zero framework sprawl during a 4-day sprint, the architec
 │ CloudWatch Logs │◄──────┤ guardrail-    │───────►│ DynamoDB         │
 │ & Metrics       │       │ poller        │        │ (Deployments)    │
 └─────────────────┘       └───────┬───────┘        └──────────────────┘
-                                  │ (snapshot payload)
+                                  │ (telemetry snapshot)
                                   ▼
                           ┌───────────────┐        ┌──────────────────┐
                           │ guardrail-    │◄──────►│ Amazon Bedrock   │
@@ -57,13 +52,13 @@ To maintain safety and zero framework sprawl during a 4-day sprint, the architec
                       └───────────────────────┘
                                   │
                  ┌────────────────┴────────────────┐
-                 ▼ (dev / staging)                 ▼ (prod)
+                 ▼ (dev / staging: Auto)           ▼ (prod: Human Gate)
         ┌─────────────────┐               ┌─────────────────┐
         │ guardrail-      │               │ DynamoDB        │
         │ remediator      │               │ (ApprovalQueue) │
         └────────┬────────┘               └────────┬────────┘
                  │                                 │
-                 ▼                                 ▼ (Human Approves)
+                 ▼                                 ▼ (Operator Approves)
         ┌─────────────────┐               ┌─────────────────┐
         │ API Gateway     │◄──────────────┤ guardrail-      │
         │ Stage Throttle  │               │ approve-action  │
@@ -71,37 +66,45 @@ To maintain safety and zero framework sprawl during a 4-day sprint, the architec
         └─────────────────┘
 ```
 
+### Key Architectural Pillars:
+1. **Single Responsibility Lambdas**: Telemetry ingestion (`poller`), classification (`reasoner`), remediation (`remediator`), and approval handling (`approve-action`) are strictly decoupled.
+2. **Decoupled Control Plane**: The operator console and incident APIs run on an isolated API Gateway (`guardrail-control-api`). Even if a compromised target API is throttled to 0 requests/sec, operators never lose dashboard access.
+3. **Deployment Heartbeat Reconciliation**: CI/CD pipelines write a lightweight release heartbeat to DynamoDB (`Deployments`). When Bedrock evaluates a traffic surge, it factors in recent code releases to prevent false alarms during planned rollouts.
+4. **Fail-Closed Safety**: If Bedrock encounters rate limits or upstream timeouts, the system safely falls back to conservative protection (`RUNAWAY` classification with `is_fallback: true`).
+
 ---
 
-## 3. Structured Reasoning with Amazon Bedrock Converse API
+## 3. Deterministic AI Reasoning with Bedrock Converse API
 
-One of the biggest risks with LLM integrations in production is non-deterministic output: models adding conversational filler, markdown formatting, or hallucinating schema keys.
+One of the common hurdles with LLMs in operational loops is non-deterministic output: models returning markdown fluff or unexpected JSON keys.
 
-To eliminate text-parsing errors, Guardrail Agent uses the Amazon Bedrock **Converse API** with `toolConfig`. By setting `toolChoice = {"tool": {"name": "classify_anomaly"}}`, we force Bedrock to respond exclusively through a typed schema:
+Fuse eliminates this using the **Amazon Bedrock Converse API** with `toolConfig` and forced tool choice (`classify_anomaly`). This guarantees that Bedrock responds strictly according to a typed schema:
 
 ```python
+import boto3
+
+bedrock = boto3.client("bedrock-runtime", region_name="ap-south-1")
+
 CLASSIFY_TOOL_SPEC = {
     "tools": [
         {
             "toolSpec": {
                 "name": "classify_anomaly",
-                "description": "Classifies whether an API traffic spike is legitimate or a runaway cost anomaly.",
+                "description": "Classifies whether an API traffic surge is legitimate or a runaway cost loop.",
                 "inputSchema": {
                     "json": {
                         "type": "object",
                         "properties": {
                             "classification": {
                                 "type": "string",
-                                "enum": ["NORMAL", "RUNAWAY"],
-                                "description": "Classification of the traffic spike."
+                                "enum": ["NORMAL", "RUNAWAY"]
                             },
                             "confidence": {
-                                "type": "number",
-                                "description": "Confidence score between 0.0 and 1.0."
+                                "type": "number"
                             },
                             "explanation": {
                                 "type": "string",
-                                "description": "Crisp 1-2 sentence rationale explaining the classification."
+                                "description": "Concise 1-2 sentence engineering rationale."
                             }
                         },
                         "required": ["classification", "confidence", "explanation"]
@@ -109,60 +112,67 @@ CLASSIFY_TOOL_SPEC = {
                 }
             }
         }
-    ]
+    ],
+    "toolChoice": {"tool": {"name": "classify_anomaly"}}
 }
 ```
 
-### Contextual Decision Matrix
-The prompt supplies Bedrock with four critical signals:
-1. **Delta over Baseline**: How far above the rolling 15-minute moving average is current traffic?
-2. **Caller Diversity (`unique_caller_count`)**: Are requests originating from dozens of distinct IP addresses, or a single client ID?
-3. **Payload Variance**: Are request bodies diverse (shopping cart, search, review), or byte-for-byte identical?
-4. **Deploy Heartbeat**: Did a deployment occur in the last 10 minutes that explains this spike?
+### Multi-Dimensional Context Evaluation
+Instead of relying on request count alone, Fuse passes Bedrock four operational dimensions:
+* **Caller Diversity**: Are incoming requests distributed across hundreds of unique IP addresses, or originating from a single runaway client?
+* **Traffic Velocity Delta**: How steep is the surge relative to the rolling 15-minute moving average?
+* **Payload Variance**: Are requests carrying diverse query parameters, or byte-for-byte identical retry loops?
+* **Release Correlation**: Was a new build deployed within the last 15 minutes?
 
-When evaluated against live traffic:
-* **Legitimate Surge (35 distinct IPs, varied search terms)**: Classified as `NORMAL` (confidence 0.98).
-* **Runaway Loop (1 IP, repeated failed-retry body)**: Classified as `RUNAWAY` (confidence 0.99).
-
----
-
-## 4. Remediation & The Human Approval Gate
-
-When Bedrock identifies a `RUNAWAY` incident, how should the system react?
-
-### Dev / Staging: Autonomous Remediation
-In non-production environments, speed is priority. The Reasoner immediately invokes `guardrail-remediator`, which executes an `apigateway.update_stage` call setting `throttling/rateLimit` and `throttling/burstLimit` to `0`. Within seconds, subsequent buggy requests receive `HTTP 429 Too Many Requests`.
-
-### Production: Human-in-the-Loop Safety Gate
-In production, false positives carry business risk. Therefore, on `prod`:
-1. The Reasoner **withholds automated throttling**.
-2. It writes a `PENDING` record into DynamoDB `ApprovalQueue`.
-3. The operator dashboard highlights the incident with an amber pulsing badge and Bedrock's reasoning summary.
-4. When an on-call engineer clicks **Approve Throttle**, the control plane calls `guardrail-approve-action`, which executes the stage throttle and updates the audit log.
-
-### Strict Idempotency
-Because multiple alerts can trigger simultaneously, the Remediator inspects the stage settings first. If `rateLimit == 0.0`, it returns `ALREADY_THROTTLED` without throwing errors or creating redundant API Gateway deployments.
+**The Result:**
+* **Legitimate Surge** (e.g., 35 unique callers, varied payloads) &rarr; `NORMAL` (Confidence: 0.98, No throttle).
+* **Runaway Loop** (e.g., 40 rapid requests from 1 caller, repeated errors) &rarr; `RUNAWAY` (Confidence: 0.99, Circuit tripped).
 
 ---
 
-## 5. Live Dashboard on Amazon S3
+## 4. Autonomous Containment vs. Human-in-the-Loop Safety
 
-The operator console is hosted directly on AWS Amplify Hosting (with Amazon S3 static website fallback), connecting to the isolated `guardrail-control-api` via CORS:
-* **Live Dashboard URL**: `https://main.d1hndpgpwb40h8.amplifyapp.com`
-* **Real Metrics**: Scorecards for evaluations monitored, runaways caught, pending approvals, and throttled stages are derived directly from DynamoDB items—no simulated counters or guessing.
-* **One-Click Approval**: Operators can review Bedrock's explanations and approve throttle actions with a single click.
+How a circuit breaker reacts must depend on the environment:
+
+### Dev / Staging (Autonomous Instant Cutoff)
+In non-production environments, cost velocity is the priority. The Reasoner directly triggers `guardrail-remediator`, which updates the target API Gateway stage method settings:
+* `throttling/rateLimit` &rarr; `0`
+* `throttling/burstLimit` &rarr; `0`
+
+Subsequent requests immediately receive `HTTP 429 Too Many Requests` directly at the API Gateway edge, instantly halting downstream Lambda invocations and DynamoDB write costs.
+
+### Production (Human-in-the-Loop Approval Gate)
+In production, dropping an API stage to 0 requests/sec requires human validation. 
+1. The Reasoner logs the incident into the `ApprovalQueue` table as `PENDING_APPROVAL`.
+2. The **Fuse Console** (hosted on AWS Amplify) surfaces an amber alert with Bedrock's synthesized explanation.
+3. An on-call engineer reviews the rationale and clicks **Approve Circuit Trip**.
+4. The control plane invokes `guardrail-approve-action` to safely execute the throttle and log the audit trail.
+
+### Idempotent Remediation
+To prevent race conditions during rapid alerting, `guardrail-remediator` inspects current stage limits before applying patches. If the stage is already at `0 rps`, it returns `ALREADY_THROTTLED` with zero duplicate mutations.
 
 ---
 
-## 6. What We Learned
+## 5. Live Edge Verification
 
-1. **Structured Outputs are Non-Negotiable**: Bedrock Converse `toolConfig` completely eliminated prompt extraction errors. It makes LLMs behave like reliable deterministic microservices.
-2. **Control Plane Isolation is Vital**: If your management dashboard shares an API Gateway stage with the application you throttle to 0 rps, you lock yourself out of your own emergency brakes.
-3. **Deployment Context Solves False Positives**: Simply knowing that a release happened 3 minutes ago turns what looks like an anomaly into expected behavior.
+A core design principle of Fuse is **Independent Edge Observation**:
+> *Never trust internal Lambda success callbacks to declare an incident resolved. Verify from the outside in.*
+
+When Fuse executes a circuit trip, an independent edge prober tests the public API Gateway endpoint. The remediation is only marked complete once the regional edge returns a genuine `HTTP 429 Too Many Requests`.
 
 ---
 
-## Summary Links
-* **GitHub Repository**: [https://github.com/Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)
-* **Live Console (HTTPS)**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)
-* **Region**: AWS Asia Pacific (Mumbai) `ap-south-1`
+## 6. What We Learned Building Fuse
+
+1. **Structured Outputs are Essential**: Using Bedrock Converse API with forced tool schemas turns generative models into dependable, deterministic decision engines suitable for critical infrastructure.
+2. **Never Share Control Plane Infrastructure**: If your operator dashboard relies on the same API Gateway or VPC as the services you might need to shut down, you risk locking yourself out of your own emergency brakes.
+3. **Context Trumps Raw Thresholds**: High request volume is not a problem—monopolized single-caller volume during an error storm is. Contextual classification is the missing layer in cloud cost governance.
+
+---
+
+## Resources & Live Links
+
+* 🌐 **Live Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)
+* 📺 **Demo Walkthrough Video**: [Watch on YouTube](https://youtu.be/UWzPBdO63ek)
+* 💻 **Source Code & Runbooks**: [GitHub Repository](https://github.com/Pranjulchaurasiya/fuse)
+* 📍 **AWS Region**: `ap-south-1` (Mumbai)

@@ -1,12 +1,13 @@
-# Fuse — AWS Cost Guardrail & Real-Time Circuit Breaker
+# Fuse: The Cognitive Circuit Breaker for Your AWS Bill
 
 > **An autonomous, context-aware circuit breaker for serverless APIs powered by Amazon Bedrock, EventBridge, DynamoDB, and API Gateway.**  
 > Built for **First Commit — Bharat Builds Tour 2026 (Ship It Track)**  
 > Builder: **Pranjul Chaurasiya** (@pranjul_chaurasiya | Team Code: `ZK2FP6`)
 
-[Live Console (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+[Live Console (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Demo Video (YouTube)](https://youtu.be/UWzPBdO63ek) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
 
 [![Live Console](https://img.shields.io/badge/Live_Console-AWS_Amplify_Hosting_(HTTPS)-blue?style=for-the-badge&logo=awsamplify)](https://main.d1hndpgpwb40h8.amplifyapp.com)
+[![Demo Video](https://img.shields.io/badge/Demo_Video-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/UWzPBdO63ek)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
 [![Track](https://img.shields.io/badge/Track-Ship_It-green?style=for-the-badge)](https://www.wemakedevs.org/aws/first-commit)
@@ -15,9 +16,12 @@
 
 ## Quick Verification (for Judges)
 - **Live Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Fallback: [S3 Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com))* — shows real incident history generated from live AWS traffic, not mock/seed data
+- **Demo Video (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) — full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and real HTTP 429 stage cutoff
 - **Every AWS resource ID in this README is real and independently checkable** — see Section 05 for exact names/IDs
-- **Demo Video**: *(link once uploaded)*
 - **AWS Builder Center Blog Post**: [docs/blog-post.md](docs/blog-post.md) *(published link once live)*
+
+[![Watch the Fuse 3-Minute Demo Video](https://img.youtube.com/vi/UWzPBdO63ek/maxresdefault.jpg)](https://youtu.be/UWzPBdO63ek)
+*Click above to watch the complete 3-minute end-to-end video demonstration on YouTube.*
 
 ### How It Works
 
@@ -193,7 +197,7 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 | **02 / Built on AWS** | Deployed live across 6 native AWS services in `ap-south-1`: Lambda, API Gateway, DynamoDB, Bedrock, CloudWatch, EventBridge, and S3. |
 | **03 / Learning** | Mastered Amazon Bedrock Converse API structured tool calling, CloudWatch metric correlation, and isolated control plane architecture. |
 | **04 / Execution** | Complete end-to-end working system: live poller, Bedrock classification, approval queue, stage throttle remediation, and responsive dashboard. |
-| **05 / Demo Video** | 3-minute scripted demonstration showing live anomaly detection, human approval, and real HTTP 429 stage cutoff. |
+| **05 / Demo Video** | [Watch on YouTube (2m 58s)](https://youtu.be/UWzPBdO63ek) — 3-minute scripted demonstration showing live anomaly detection, human approval, and real HTTP 429 stage cutoff. |
 
 ---
 
@@ -207,6 +211,7 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 
 ## 08 / Project Documentation
 
+* [YouTube Demo Video](https://youtu.be/UWzPBdO63ek) — 3-Minute Live Anomaly Mitigation Walkthrough
 * [docs/demo-script.md](docs/demo-script.md) — 3-Minute Video Walkthrough Script
 * [docs/blog-post.md](docs/blog-post.md) — AWS Builder Center Technical Article
 * [PRD.md](PRD.md) — Product Requirements Document
