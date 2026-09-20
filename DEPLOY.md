@@ -36,6 +36,8 @@ This orchestrator executes the 6 verified deployment steps in strict order:
 5. `scripts/setup_day3.py` — Deploys `guardrail-remediator`, `guardrail-approve-action`, `guardrail-get-incidents`, and `guardrail-control-api`.
 6. `scripts/deploy_dashboard.py` — Deploys the operator console static assets to S3.
 
+> **Note**: `setup_all.py` has been verified idempotent on an existing deployment; it has not yet been tested against a completely fresh AWS account.
+
 ---
 
 ## Detailed Step-by-Step Provisioning (Manual Runbook)
