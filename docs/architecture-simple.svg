@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" style="background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <defs>
+    <!-- Arrowhead Markers -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="900" fill="#ffffff"/>
+
+  <!-- Outer Border Frame -->
+  <rect x="20" y="20" width="1560" height="860" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <!-- ==================== HEADER ==================== -->
+  <g transform="translate(50, 55)">
+    <text x="0" y="26" fill="#0f172a" font-size="24" font-weight="700" letter-spacing="-0.3">Fuse — System Architecture &amp; Control Loop</text>
+    <text x="0" y="50" fill="#64748b" font-size="14" font-weight="400">Autonomous cost guardrail: 1-minute telemetry polling, AI context evaluation, approval gate, and regional edge remediation.</text>
+
+    <!-- Region / Status Badge -->
+    <g transform="translate(1240, 6)">
+      <rect x="0" y="0" width="260" height="36" rx="4" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+      <circle cx="16" cy="18" r="4.5" fill="#475569"/>
+      <text x="28" y="22" fill="#334155" font-size="12" font-weight="600" font-family="ui-monospace, monospace">AWS ap-south-1 · Production</text>
+    </g>
+  </g>
+
+  <!-- ==================== CONNECTOR PATHS ==================== -->
+  <!-- Step 1 -> Step 2 -->
+  <path d="M 230 435 L 260 435" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Step 2 -> Step 3 -->
+  <path d="M 455 435 L 485 435" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Step 3 -> Step 4A (Dev/Staging) -->
+  <path d="M 750 375 C 780 375, 780 305, 815 305" stroke="#d97706" stroke-width="1.8" fill="none" marker-end="url(#arrow-amber)"/>
+  <rect x="752" y="330" width="62" height="20" rx="3" fill="#ffffff" stroke="#d97706" stroke-width="1.2"/>
+  <text x="783" y="344" fill="#d97706" font-size="9.5" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">dev / stage</text>
+
+  <!-- Step 3 -> Step 4B (Production Gate) -->
+  <path d="M 750 495 C 780 495, 780 520, 815 520" stroke="#d97706" stroke-width="1.8" fill="none" marker-end="url(#arrow-amber)"/>
+  <rect x="752" y="498" width="62" height="20" rx="3" fill="#ffffff" stroke="#d97706" stroke-width="1.2"/>
+  <text x="783" y="512" fill="#d97706" font-size="9.5" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">prod gate</text>
+
+  <!-- Step 4B (Approval Gate) -> Step 4C (Remediator) -->
+  <path d="M 1030 520 L 1065 520" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+  <rect x="1031" y="510" width="34" height="18" rx="2" fill="#ffffff"/>
+  <text x="1048" y="523" fill="#475569" font-size="9" font-weight="600" font-family="ui-monospace, monospace" text-anchor="middle">approve</text>
+
+  <!-- Step 4A (Auto-Throttle) -> Step 5 (Edge) -->
+  <path d="M 1030 305 C 1170 305, 1200 405, 1305 405" stroke="#64748b" stroke-width="1.8" stroke-dasharray="5,4" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Step 4C (Remediator) -> Step 5 (Edge) -->
+  <path d="M 1265 520 C 1285 520, 1285 465, 1305 465" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+
+  <!-- ==================== STEP 01: EVENTBRIDGE ==================== -->
+  <g transform="translate(50, 320)">
+    <rect width="180" height="230" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="14" y="14" width="64" height="20" rx="3" fill="#f1f5f9"/>
+    <text x="20" y="28" fill="#475569" font-size="10" font-weight="700" font-family="ui-monospace, monospace">STEP 01</text>
+
+    <text x="14" y="58" fill="#0f172a" font-size="18" font-weight="700">EventBridge</text>
+    <text x="14" y="78" fill="#475569" font-size="12" font-weight="600" font-family="ui-monospace, monospace">rate(1 minute)</text>
+    <line x1="14" y1="92" x2="166" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="14" y="116" fill="#475569" font-size="12.5">Automated schedule</text>
+    <text x="14" y="136" fill="#475569" font-size="12.5">initiates the poller</text>
+    <text x="14" y="156" fill="#475569" font-size="12.5">every 60 seconds.</text>
+
+    <rect x="14" y="186" width="105" height="22" rx="3" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="22" y="201" fill="#64748b" font-size="10" font-family="ui-monospace, monospace">Rule: 1-min rate</text>
+  </g>
+
+  <!-- ==================== STEP 02: METRICS POLLER ==================== -->
+  <g transform="translate(260, 320)">
+    <rect width="195" height="230" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="14" y="14" width="64" height="20" rx="3" fill="#f1f5f9"/>
+    <text x="20" y="28" fill="#475569" font-size="10" font-weight="700" font-family="ui-monospace, monospace">STEP 02</text>
+
+    <text x="14" y="58" fill="#0f172a" font-size="18" font-weight="700">Metrics Poller</text>
+    <text x="14" y="78" fill="#475569" font-size="12" font-weight="600" font-family="ui-monospace, monospace">Telemetry Gather</text>
+    <line x1="14" y1="92" x2="181" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="14" y="116" fill="#0f172a" font-size="12" font-weight="600">Queries AWS state:</text>
+    <text x="14" y="136" fill="#475569" font-size="12">• CloudWatch API Count</text>
+    <text x="14" y="154" fill="#475569" font-size="12">• Release Heartbeat table</text>
+    <text x="14" y="172" fill="#475569" font-size="12">• Rolling 60m baseline</text>
+
+    <rect x="14" y="190" width="112" height="22" rx="3" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="22" y="205" fill="#64748b" font-size="10" font-family="ui-monospace, monospace">Spike &gt; 3x base</text>
+  </g>
+
+  <!-- ==================== STEP 03: BEDROCK REASONER (SINGLE ACCENT) ==================== -->
+  <g transform="translate(485, 245)">
+    <!-- Base Card -->
+    <rect width="265" height="380" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="2"/>
+
+    <!-- Top Accent Bar -->
+    <path d="M 0 6 C 0 2.68 2.68 0 6 0 L 259 0 C 262.32 0 265 2.68 265 6 L 265 8 L 0 8 Z" fill="#d97706"/>
+
+    <rect x="16" y="16" width="138" height="20" rx="3" fill="#d97706"/>
+    <text x="22" y="30" fill="#ffffff" font-size="10" font-weight="700" font-family="ui-monospace, monospace" letter-spacing="0.5">03 / REASONING ENGINE</text>
+
+    <text x="16" y="60" fill="#0f172a" font-size="20" font-weight="700">Bedrock Reasoner</text>
+    <text x="16" y="80" fill="#d97706" font-size="12" font-weight="600" font-family="ui-monospace, monospace">Bedrock Converse API</text>
+    <line x1="16" y1="94" x2="249" y2="94" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="16" y="116" fill="#0f172a" font-size="11.5" font-weight="700" letter-spacing="0.5">EVALUATES CONTEXT:</text>
+    <text x="16" y="136" fill="#475569" font-size="12">• <tspan fill="#0f172a" font-weight="600">Callers:</tspan> Unique caller ratio</text>
+    <text x="16" y="154" fill="#475569" font-size="12">• <tspan fill="#0f172a" font-weight="600">Payloads:</tspan> Diversity vs loops</text>
+    <text x="16" y="172" fill="#475569" font-size="12">• <tspan fill="#0f172a" font-weight="600">Deploys:</tspan> Release heartbeat</text>
+
+    <line x1="16" y1="190" x2="249" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="16" y="210" fill="#0f172a" font-size="11.5" font-weight="700" letter-spacing="0.5">DETERMINISTIC OUTPUT:</text>
+
+    <!-- Outcome A: NORMAL (Monochrome/Subtle) -->
+    <g transform="translate(16, 222)">
+      <rect width="233" height="46" rx="4" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="12" y="20" fill="#0f172a" font-size="11" font-weight="700" font-family="ui-monospace, monospace">NORMAL</text>
+      <text x="12" y="35" fill="#64748b" font-size="11">Baseline preserved · Zero disruption</text>
+    </g>
+
+    <!-- Outcome B: RUNAWAY (Subtle Amber Accent) -->
+    <g transform="translate(16, 278)">
+      <rect width="233" height="50" rx="4" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+      <text x="12" y="20" fill="#b45309" font-size="11" font-weight="700" font-family="ui-monospace, monospace">RUNAWAY</text>
+      <text x="12" y="36" fill="#92400e" font-size="11">Anomalous spike · Trigger cutoff &#8594;</text>
+    </g>
+
+    <text x="16" y="354" fill="#64748b" font-size="10" font-family="ui-monospace, monospace">Fail-closed safety: timeout &#8594; RUNAWAY</text>
+  </g>
+
+  <!-- ==================== STEP 04A: AUTO-THROTTLE (DEV/STAGING) ==================== -->
+  <g transform="translate(815, 215)">
+    <rect width="215" height="180" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="14" y="14" width="112" height="20" rx="3" fill="#f1f5f9"/>
+    <text x="20" y="28" fill="#475569" font-size="10" font-weight="700" font-family="ui-monospace, monospace">DEV / STAGING</text>
+
+    <text x="14" y="58" fill="#0f172a" font-size="18" font-weight="700">Auto-Throttle</text>
+    <text x="14" y="78" fill="#475569" font-size="12" font-weight="600" font-family="ui-monospace, monospace">Instant Cutoff</text>
+    <line x1="14" y1="92" x2="201" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="14" y="116" fill="#475569" font-size="12.5">Autonomous execution</text>
+    <text x="14" y="136" fill="#475569" font-size="12.5">calls remediator with</text>
+    <text x="14" y="156" fill="#64748b" font-size="12">zero human delay.</text>
+  </g>
+
+  <!-- ==================== STEP 04B: HUMAN APPROVAL GATE (PROD) ==================== -->
+  <g transform="translate(815, 430)">
+    <rect width="215" height="180" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="14" y="14" width="112" height="20" rx="3" fill="#f1f5f9"/>
+    <text x="20" y="28" fill="#475569" font-size="10" font-weight="700" font-family="ui-monospace, monospace">PRODUCTION</text>
+
+    <text x="14" y="58" fill="#0f172a" font-size="18" font-weight="700">Approval Gate</text>
+    <text x="14" y="78" fill="#475569" font-size="12" font-weight="600" font-family="ui-monospace, monospace">Safety Gate</text>
+    <line x1="14" y1="92" x2="201" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="14" y="116" fill="#475569" font-size="12.5">Withholds auto-throttle.</text>
+    <text x="14" y="136" fill="#0f172a" font-size="12.5" font-weight="600">Operator review on Console.</text>
+    <text x="14" y="156" fill="#64748b" font-size="12">Action: POST /approve</text>
+  </g>
+
+  <!-- ==================== STEP 04C: REMEDIATOR (PROD) ==================== -->
+  <g transform="translate(1065, 430)">
+    <rect width="200" height="180" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="14" y="14" width="64" height="20" rx="3" fill="#f1f5f9"/>
+    <text x="20" y="28" fill="#475569" font-size="10" font-weight="700" font-family="ui-monospace, monospace">STEP 04</text>
+
+    <text x="14" y="58" fill="#0f172a" font-size="18" font-weight="700">Remediator</text>
+    <text x="14" y="78" fill="#0f172a" font-size="12" font-weight="600" font-family="ui-monospace, monospace">RateLimit &#8594; 0</text>
+    <line x1="14" y1="92" x2="186" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <text x="14" y="116" fill="#475569" font-size="12">Patches stage settings:</text>
+    <text x="14" y="136" fill="#0f172a" font-size="12" font-family="ui-monospace, monospace" font-weight="600">RateLimit = 0</text>
+    <text x="14" y="152" fill="#0f172a" font-size="12" font-family="ui-monospace, monospace" font-weight="600">BurstLimit = 0</text>
+    <text x="14" y="170" fill="#64748b" font-size="11">Strictly idempotent.</text>
+  </g>
+
+  <!-- ==================== STEP 05: LIVE EDGE ENFORCEMENT ==================== -->
+  <g transform="translate(1305, 290)">
+    <rect width="245" height="290" rx="6" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+    <rect x="16" y="14" width="138" height="20" rx="3" fill="#0f172a"/>
+    <text x="22" y="28" fill="#ffffff" font-size="10" font-weight="700" font-family="ui-monospace, monospace">05 / ENFORCEMENT</text>
+
+    <text x="16" y="58" fill="#0f172a" font-size="19" font-weight="700">API Gateway Edge</text>
+    <text x="16" y="78" fill="#475569" font-size="12" font-weight="600" font-family="ui-monospace, monospace">Regional Cutoff</text>
+    <line x1="16" y1="92" x2="229" y2="92" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- Status Box (Clean Monochrome) -->
+    <g transform="translate(16, 110)">
+      <rect width="213" height="46" rx="4" fill="#0f172a"/>
+      <text x="20" y="28" fill="#ffffff" font-size="11.5" font-weight="700" font-family="ui-monospace, monospace">HTTP 429 TOO MANY REQ</text>
+    </g>
+
+    <text x="16" y="184" fill="#0f172a" font-size="13" font-weight="600">Circuit breaker active.</text>
+    <text x="16" y="206" fill="#475569" font-size="12.5">Requests severed in &lt;1 sec.</text>
+    <text x="16" y="226" fill="#475569" font-size="12.5">Verified by live curl probe.</text>
+    <text x="16" y="250" fill="#0f172a" font-size="12" font-weight="600">&#10003; Downstream bill protected</text>
+  </g>
+
+  <!-- ==================== FOOTER ==================== -->
+  <g transform="translate(50, 745)">
+    <rect width="1500" height="95" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+
+    <!-- Principle 1 -->
+    <g transform="translate(32, 24)">
+      <text x="0" y="16" fill="#0f172a" font-size="13.5" font-weight="700">1. Isolated Control Plane</text>
+      <text x="0" y="36" fill="#475569" font-size="12">Management console runs on a dedicated, separate API Gateway.</text>
+      <text x="0" y="52" fill="#64748b" font-size="11.5">Workload throttling never locks operators out of the control room.</text>
+    </g>
+
+    <line x1="490" y1="18" x2="490" y2="78" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Principle 2 -->
+    <g transform="translate(530, 24)">
+      <text x="0" y="16" fill="#0f172a" font-size="13.5" font-weight="700">2. Deterministic Structured Reasoning</text>
+      <text x="0" y="36" fill="#475569" font-size="12">Amazon Bedrock Converse API with toolConfig schema enforcement.</text>
+      <text x="0" y="52" fill="#64748b" font-size="11.5">Single-turn typed JSON output; zero unconstrained agent loops.</text>
+    </g>
+
+    <line x1="1020" y1="18" x2="1020" y2="78" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Principle 3 -->
+    <g transform="translate(1060, 24)">
+      <text x="0" y="16" fill="#0f172a" font-size="13.5" font-weight="700">3. Independent Edge Observation</text>
+      <text x="0" y="36" fill="#475569" font-size="12">Circuit trip is verified directly at the AWS API Gateway regional edge.</text>
+      <text x="0" y="52" fill="#64748b" font-size="11.5">Requires live HTTP 429 probe return before marking resolved.</text>
+    </g>
+  </g>
+</svg>

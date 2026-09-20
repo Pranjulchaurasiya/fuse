@@ -13,6 +13,35 @@
 
 ---
 
+## Quick Verification (for Judges)
+- **Live Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Fallback: [S3 Console](http://guardrail-dashboard-515903395012.s3-website.ap-south-1.amazonaws.com))* — shows real incident history generated from live AWS traffic, not mock/seed data
+- **Every AWS resource ID in this README is real and independently checkable** — see Section 05 for exact names/IDs
+- **Demo Video**: *(link once uploaded)*
+- **AWS Builder Center Blog Post**: [docs/blog-post.md](docs/blog-post.md) *(published link once live)*
+
+### How It Works
+
+**Setup** (one-time, manual — see [DEPLOY.md](DEPLOY.md)):
+```
+Clone → Configure → Provision
+```
+
+**Runtime** (fully autonomous once running):
+```
+Observe → Reason → Branch → Approve → Throttle
+```
+
+* **Clone**: `git clone` the repo
+* **Configure**: set your target API Gateway ID, region, Bedrock model
+* **Provision**: create the Lambdas, DynamoDB tables, and EventBridge rule per [DEPLOY.md](DEPLOY.md)'s runbook
+* **Observe**: EventBridge + Poller pull live traffic metrics every minute
+* **Reason**: Bedrock classifies `NORMAL` vs `RUNAWAY`
+* **Branch**: `dev`/`staging` auto-throttles, `prod` holds for human review
+* **Approve**: operator confirms via the live console
+* **Throttle**: API Gateway `RateLimit` drops to 0, verified via live HTTP 429
+
+---
+
 ## 01 / The Problem
 
 Serverless auto-scaling hides runaway loops. An infinite client retry loop, exponential backoff without jitter, unhandled 500 error cascades, or recursive LLM agent loops can generate thousands of requests per second, accumulating catastrophic AWS bills before human operators wake up.
@@ -35,6 +64,10 @@ Traditional CloudWatch static alarms (*"if requests > 100/min then alarm"*) crea
 
 ## 02 / System Architecture
 
+### Quick Overview
+![Fuse Simplified Architecture](docs/architecture-simple.svg)
+
+### Full Technical Architecture
 ```mermaid
 flowchart TD
     subgraph Scheduling
