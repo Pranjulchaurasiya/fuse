@@ -15,10 +15,17 @@ import zipfile
 import boto3
 from botocore.exceptions import ClientError
 
-REGION_NAME = "ap-south-1"
+REGION_NAME = (
+    os.environ.get("AWS_REGION")
+    or os.environ.get("AWS_DEFAULT_REGION")
+    or "ap-south-1"
+)
 ROLE_NAME = "guardrail-reasoner-role"
 FUNCTION_NAME = "guardrail-reasoner"
-BEDROCK_MODEL_ID = "apac.amazon.nova-micro-v1:0"
+BEDROCK_MODEL_ID = (
+    os.environ.get("BEDROCK_MODEL_ID")
+    or ("apac.amazon.nova-micro-v1:0" if REGION_NAME == "ap-south-1" else "us.amazon.nova-micro-v1:0")
+)
 
 
 def get_lambda_zip() -> bytes:

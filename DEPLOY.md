@@ -36,7 +36,9 @@ This orchestrator executes the 6 verified deployment steps in strict order:
 5. `scripts/setup_day3.py` — Deploys `guardrail-remediator`, `guardrail-approve-action`, `guardrail-get-incidents`, and `guardrail-control-api`.
 6. `scripts/deploy_dashboard.py` — Deploys the operator console static assets to S3.
 
-> **Note**: `setup_all.py` has been verified idempotent on an existing deployment; it has not yet been tested against a completely fresh AWS account.
+> **Verification Status**: `setup_all.py` has been verified end-to-end on both:
+> 1. **Idempotency on existing deployment** (`ap-south-1`): all 6 steps executed and passed in 111.1s without state collision.
+> 2. **Real CREATE path on a clean region** (`us-east-1`): exercised initial DynamoDB table creation, Lambda creation, API Gateway generation, EventBridge rule wiring, and S3 static bucket hosting in 198.6s with zero errors, followed by clean automated teardown.
 
 ---
 

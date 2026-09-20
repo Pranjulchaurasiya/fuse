@@ -23,7 +23,11 @@ import zipfile
 import boto3
 from botocore.exceptions import ClientError
 
-REGION_NAME = "ap-south-1"
+REGION_NAME = (
+    os.environ.get("AWS_REGION")
+    or os.environ.get("AWS_DEFAULT_REGION")
+    or "ap-south-1"
+)
 REMEDIATOR_ROLE = "guardrail-remediator-role"
 CONTROL_ROLE = "guardrail-control-role"
 REASONER_ROLE = "guardrail-reasoner-role"
@@ -332,6 +336,22 @@ def main():
         PolicyDocument=json.dumps(reasoner_extra_policy),
     )
 
+    # Discover target demo API Gateway ID in current region
+    target_api_id = "poim5xmgs2"
+    try:
+        apis = apigw_client.get_rest_apis().get("items", [])
+        for a in apis:
+            if a.get("name") == DEMO_API_NAME:
+                target_api_id = a["id"]
+                break
+    except Exception as e:
+        print(f"[!] Warning: Could not query REST APIs: {e}")
+
+    bedrock_model_id = (
+        os.environ.get("BEDROCK_MODEL_ID")
+        or ("apac.amazon.nova-micro-v1:0" if REGION_NAME == "ap-south-1" else "us.amazon.nova-micro-v1:0")
+    )
+
     # 2. Deploy Remediator
     remediator_zip = make_zip("lambdas/remediator/handler.py")
     remediator_arn = ensure_lambda(
@@ -340,8 +360,8 @@ def main():
         remediator_role_arn,
         remediator_zip,
         env_vars={
-            "TARGET_API_ID": "poim5xmgs2",
-            "TARGET_API_NAME": "guardrail-demo-api",
+            "TARGET_API_ID": target_api_id,
+            "TARGET_API_NAME": DEMO_API_NAME,
             "INCIDENTS_TABLE": "Incidents",
         },
         timeout=15,
@@ -385,7 +405,7 @@ def main():
         reasoner_zip,
         env_vars={
             "BEDROCK_REGION": REGION_NAME,
-            "BEDROCK_MODEL_ID": "apac.amazon.nova-micro-v1:0",
+            "BEDROCK_MODEL_ID": bedrock_model_id,
             "INCIDENTS_TABLE": "Incidents",
             "DEPLOYMENTS_TABLE": "Deployments",
             "APPROVAL_QUEUE_TABLE": "ApprovalQueue",

@@ -19,7 +19,11 @@ import zipfile
 import boto3
 from botocore.exceptions import ClientError
 
-REGION_NAME = "ap-south-1"
+REGION_NAME = (
+    os.environ.get("AWS_REGION")
+    or os.environ.get("AWS_DEFAULT_REGION")
+    or "ap-south-1"
+)
 ROLE_NAME = "guardrail-poller-role"
 FUNCTION_NAME = "guardrail-poller"
 RULE_NAME = "guardrail-poller-schedule"

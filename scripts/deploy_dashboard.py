@@ -14,7 +14,13 @@ try:
     ACCOUNT_ID = boto3.client("sts", region_name=REGION_NAME).get_caller_identity()["Account"]
 except Exception:
     ACCOUNT_ID = "515903395012"
-BUCKET_NAME = f"guardrail-dashboard-{ACCOUNT_ID}"
+if os.environ.get("DASHBOARD_BUCKET_NAME"):
+    BUCKET_NAME = os.environ["DASHBOARD_BUCKET_NAME"]
+elif REGION_NAME == "ap-south-1":
+    BUCKET_NAME = f"guardrail-dashboard-{ACCOUNT_ID}"
+else:
+    BUCKET_NAME = f"guardrail-dashboard-{ACCOUNT_ID}-{REGION_NAME}"
+
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 
 s3_client = boto3.client("s3", region_name=REGION_NAME)
@@ -27,10 +33,10 @@ def ensure_bucket_exists():
         print(f"[+] S3 bucket '{BUCKET_NAME}' already exists.")
     except Exception:
         print(f"[*] Creating S3 bucket '{BUCKET_NAME}' in '{REGION_NAME}'...")
-        s3_client.create_bucket(
-            Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": REGION_NAME},
-        )
+        create_kwargs = {"Bucket": BUCKET_NAME}
+        if REGION_NAME != "us-east-1":
+            create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": REGION_NAME}
+        s3_client.create_bucket(**create_kwargs)
         print(f"[+] Created bucket '{BUCKET_NAME}'.")
 
 

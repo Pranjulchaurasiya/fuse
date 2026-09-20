@@ -87,10 +87,11 @@ def run_step(step_info: dict) -> bool:
 
     start_time = time.time()
     try:
-        # Run child script directly inheriting stdout/stderr for real-time visibility
+        # Run child script directly inheriting stdout/stderr and environment
         result = subprocess.run(
             [sys.executable, "-u", script_path],
             cwd=REPO_ROOT,
+            env=os.environ,
             check=False,
         )
     except Exception as e:
@@ -107,10 +108,20 @@ def run_step(step_info: dict) -> bool:
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Master orchestration script for AWS Cost Guardrail")
+    parser.add_argument("--region", default=os.environ.get("AWS_REGION", "ap-south-1"), help="Target AWS region")
+    args = parser.parse_args()
+
+    region = args.region
+    os.environ["AWS_REGION"] = region
+    os.environ["AWS_DEFAULT_REGION"] = region
+
     print_banner("FUSE — FULL INFRASTRUCTURE SETUP ORCHESTRATOR", "=")
     print("This script will provision the complete AWS Cost Guardrail system in sequence.")
-    print(f"Repository Root: {REPO_ROOT}")
-    print(f"Python Runtime:  {sys.executable}\n")
+    print(f"Repository Root:   {REPO_ROOT}")
+    print(f"Target AWS Region: {region}")
+    print(f"Python Runtime:    {sys.executable}\n")
 
     total_start = time.time()
 
@@ -120,7 +131,7 @@ def main():
             print_banner("SETUP HALTED: DEPLOYMENT FAILED", "!")
             print(f"Failed on Step {step['step_num']}: {step['name']} ({step['script']})")
             print("Orchestration stopped immediately. No subsequent steps were executed.")
-            print("Resolve the error above and rerun 'python scripts/setup_all.py'.\n")
+            print(f"Resolve the error above and rerun 'python scripts/setup_all.py --region {region}'.\n")
             sys.exit(1)
 
     total_elapsed = time.time() - total_start
