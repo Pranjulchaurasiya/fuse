@@ -9,8 +9,11 @@ import boto3
 import json
 import os
 
-REGION_NAME = "ap-south-1"
-ACCOUNT_ID = "515903395012"
+REGION_NAME = os.environ.get("AWS_REGION", "ap-south-1")
+try:
+    ACCOUNT_ID = boto3.client("sts", region_name=REGION_NAME).get_caller_identity()["Account"]
+except Exception:
+    ACCOUNT_ID = "515903395012"
 BUCKET_NAME = f"guardrail-dashboard-{ACCOUNT_ID}"
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 

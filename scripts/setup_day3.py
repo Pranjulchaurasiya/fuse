@@ -228,24 +228,35 @@ def setup_control_api(apigw_client, lambda_client, account_id: str, incidents_ar
         resources = apigw_client.get_resources(restApiId=api_id).get("items", [])
         return r["id"]
 
+    def ensure_method_and_integration(resource_id, http_method, lambda_arn):
+        uri = f"arn:aws:apigateway:{REGION_NAME}:lambda:path/2015-03-31/functions/{lambda_arn}/invocations"
+        try:
+            apigw_client.get_method(restApiId=api_id, resourceId=resource_id, httpMethod=http_method)
+            print(f"[-] Method {http_method} already exists on resource {resource_id}.")
+        except Exception:
+            print(f"[+] Creating method {http_method} on resource {resource_id}...")
+            try:
+                apigw_client.put_method(
+                    restApiId=api_id,
+                    resourceId=resource_id,
+                    httpMethod=http_method,
+                    authorizationType="NONE",
+                )
+            except ClientError as e:
+                if "ConflictException" not in str(e):
+                    raise
+            apigw_client.put_integration(
+                restApiId=api_id,
+                resourceId=resource_id,
+                httpMethod=http_method,
+                type="AWS_PROXY",
+                integrationHttpMethod="POST",
+                uri=uri,
+            )
+
     # 3. Create /incidents resource
     incidents_res_id = get_or_create("incidents", root_id)
-
-    # PUT GET on /incidents -> guardrail-get-incidents
-    apigw_client.put_method(
-        restApiId=api_id,
-        resourceId=incidents_res_id,
-        httpMethod="GET",
-        authorizationType="NONE",
-    )
-    apigw_client.put_integration(
-        restApiId=api_id,
-        resourceId=incidents_res_id,
-        httpMethod="GET",
-        type="AWS_PROXY",
-        integrationHttpMethod="POST",
-        uri=f"arn:aws:apigateway:{REGION_NAME}:lambda:path/2015-03-31/functions/{incidents_arn}/invocations",
-    )
+    ensure_method_and_integration(incidents_res_id, "GET", incidents_arn)
     ensure_cors_options(apigw_client, api_id, incidents_res_id, "GET,OPTIONS")
 
     # 4. Create /incidents/{incident_id} resource
@@ -253,22 +264,7 @@ def setup_control_api(apigw_client, lambda_client, account_id: str, incidents_ar
 
     # 5. Create /incidents/{incident_id}/approve resource
     approve_res_id = get_or_create("approve", item_res_id)
-
-    # PUT POST on /incidents/{incident_id}/approve -> guardrail-approve-action
-    apigw_client.put_method(
-        restApiId=api_id,
-        resourceId=approve_res_id,
-        httpMethod="POST",
-        authorizationType="NONE",
-    )
-    apigw_client.put_integration(
-        restApiId=api_id,
-        resourceId=approve_res_id,
-        httpMethod="POST",
-        type="AWS_PROXY",
-        integrationHttpMethod="POST",
-        uri=f"arn:aws:apigateway:{REGION_NAME}:lambda:path/2015-03-31/functions/{approve_arn}/invocations",
-    )
+    ensure_method_and_integration(approve_res_id, "POST", approve_arn)
     ensure_cors_options(apigw_client, api_id, approve_res_id, "POST,OPTIONS")
 
     # 6. Add Lambda invoke permissions

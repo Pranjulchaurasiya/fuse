@@ -20,7 +20,26 @@ Greater Noida) and do not mix. Note it once in `infra/setup-notes.md` and
 reference it everywhere — inconsistent regions is the #1 way a hackathon
 demo breaks live.
 
-## Deployment order (must follow this sequence — later steps depend on earlier ones)
+## Quickstart Provisioning (Recommended)
+
+Run the single master orchestration script to provision the entire Fuse infrastructure in sequence with dependency validation and error halts:
+
+```bash
+python scripts/setup_all.py
+```
+
+This orchestrator executes the 6 verified deployment steps in strict order:
+1. `scripts/setup_dynamodb.py` — Creates `Deployments`, `Incidents`, and `ApprovalQueue` tables (on-demand).
+2. `scripts/setup_demo_api.py` — Creates the protected target API Gateway (`guardrail-demo-api`) and backing Lambda.
+3. `scripts/setup_poller.py` — Deploys `guardrail-poller` and the 1-minute EventBridge schedule rule.
+4. `scripts/setup_reasoner.py` — Deploys `guardrail-reasoner` Lambda wired to Bedrock Converse API.
+5. `scripts/setup_day3.py` — Deploys `guardrail-remediator`, `guardrail-approve-action`, `guardrail-get-incidents`, and `guardrail-control-api`.
+6. `scripts/deploy_dashboard.py` — Deploys the operator console static assets to S3.
+
+---
+
+## Detailed Step-by-Step Provisioning (Manual Runbook)
+If you prefer to inspect, customize, or execute individual steps manually, follow this sequence (must follow this order — later steps depend on earlier ones):
 1. **DynamoDB tables** — create `Deployments`, `Incidents`, `ApprovalQueue`
    (SCHEMA.md), on-demand billing mode
 2. **Demo API Gateway + backing Lambda** — the resource that will later get
