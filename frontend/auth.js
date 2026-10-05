@@ -112,14 +112,16 @@
   }
 
   function addLogoutButton() {
-    // Find nav or header and inject logout
-    const nav = document.querySelector('nav, .nav-bar, header, .top-bar');
-    if (!nav) return;
+    // Inject logout into .nav-right so it sits neatly alongside other header actions
+    const navRight = document.querySelector('.nav-right');
+    if (!navRight || document.getElementById('fuse-signout-btn')) return;
     const btn = document.createElement('button');
+    btn.id = 'fuse-signout-btn';
     btn.textContent = 'Sign Out';
-    btn.style.cssText = 'background:none;border:1px solid #3f3f46;color:#71717a;padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;';
+    btn.className = 'btn';
+    btn.style.cssText = 'background:var(--bg-canvas);border:1px solid var(--border-light);color:var(--text-secondary);padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;';
     btn.addEventListener('click', logout);
-    nav.appendChild(btn);
+    navRight.appendChild(btn);
   }
 
   // Run on DOM ready
