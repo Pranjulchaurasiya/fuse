@@ -460,17 +460,18 @@ body {
 }
 
 /* ==========================================================================
-   Unified Top Command Strip & Compact Telemetry
+   Unified Top Command Strip & Balanced Telemetry
    ========================================================================== */
 .top-command-strip {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 16px;
+  margin-bottom: 6px;
 }
 
-@media (min-width: 960px) {
+@media (min-width: 980px) {
   .top-command-strip {
-    grid-template-columns: 46% 54%;
+    grid-template-columns: 42% 58%;
   }
 }
 
@@ -478,26 +479,27 @@ body {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 14px 18px;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   box-shadow: var(--shadow-sm);
 }
 
 .hero-heading-compact {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
-  line-height: 1.25;
+  line-height: 1.35;
   margin: 0;
 }
 
 .hero-summary-compact {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -505,7 +507,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .compact-pill {
@@ -513,7 +515,7 @@ body {
   font-size: 10px;
   background-color: var(--bg-subtle);
   border: 1px solid var(--border-light);
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 4px;
   color: var(--text-secondary);
 }
@@ -521,10 +523,10 @@ body {
 .metrics-grid-compact {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 12px;
 }
 
-@media (min-width: 580px) {
+@media (min-width: 600px) {
   .metrics-grid-compact {
     grid-template-columns: repeat(4, 1fr);
   }
@@ -534,12 +536,12 @@ body {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.2s ease;
 }
 
 .bento-tile-compact:hover {
@@ -553,21 +555,23 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
 }
 
 .tile-compact-val {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.1;
-  margin: 4px 0;
+  margin: 6px 0;
 }
 
 .tile-compact-sub {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
+  margin-top: 6px;
 }
 
 .walkthrough-guide-details {
