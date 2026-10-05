@@ -220,123 +220,85 @@ function renderIncidentCard(inc) {
   let actionHtml = "";
   if (isPending) {
     actionHtml = `
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <div class="action-status-chip text-amber">
-          <span class="pulse-dot" style="background-color: var(--state-warning);"></span>
-          <span>AWAITING APPROVAL // PRODUCTION SAFETY GATE</span>
-        </div>
-        <button class="btn-approve-trip" onclick="approveIncident('${inc.incident_id}', this)">
-          Approve Circuit Trip — Block Offending IPs via WAF
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="action-status-chip text-amber">PENDING APPROVAL</span>
+        <button class="btn-approve-trip" onclick="approveIncident('${inc.incident_id}', this)" style="padding: 4px 10px; font-size: 11px;">
+          Approve WAF IP Block
         </button>
       </div>
     `;
   } else if (inc.action_taken === "IP_BLOCKED") {
-    actionHtml = `
-      <div class="action-status-chip text-crimson">
-        <span>WAF IP-BLOCKED &mdash; SURGICAL ISOLATION (OFFENDING IPS BLOCKED)</span>
-      </div>
-    `;
+    actionHtml = `<span class="action-status-chip text-crimson">WAF IP BLOCKED</span>`;
   } else if (inc.action_taken === "APPROVED_AND_BLOCKED") {
-    actionHtml = `
-      <div class="action-status-chip text-crimson">
-        <span>APPROVED &amp; WAF BLOCKED &mdash; ISOLATED VIA WAF IP SET</span>
-      </div>
-    `;
+    actionHtml = `<span class="action-status-chip text-crimson">APPROVED &bull; WAF BLOCKED</span>`;
   } else if (inc.action_taken === "AUTO_RECOVERED") {
-    actionHtml = `
-      <div class="action-status-chip text-green">
-        <span>AUTO-RECOVERED &mdash; COOLDOWN EXPIRED, IPS UNBLOCKED</span>
-      </div>
-    `;
+    actionHtml = `<span class="action-status-chip text-green">AUTO-RECOVERED</span>`;
   } else if (inc.action_taken === "AUTO_THROTTLED" || inc.action_taken === "APPROVED_AND_THROTTLED") {
-    actionHtml = `
-      <div class="action-status-chip text-crimson">
-        <span>THROTTLED (${escapeHtml(stage)}) &mdash; STAGE THROTTLED</span>
-      </div>
-    `;
+    actionHtml = `<span class="action-status-chip text-crimson">THROTTLED</span>`;
   } else {
-    actionHtml = `
-      <div class="action-status-chip text-green">
-        <span>VERIFIED NORMAL &mdash; BASELINE INTACT</span>
-      </div>
-    `;
+    actionHtml = `<span class="action-status-chip text-green">NORMAL BASELINE</span>`;
   }
+
+  const blockedList = Array.isArray(inc.blocked_ips) && inc.blocked_ips.length > 0 
+    ? `<span style="font-family: var(--font-mono); font-size: 11px; color: var(--state-danger);">IP: ${escapeHtml(inc.blocked_ips.join(', '))}</span>` 
+    : '';
 
   return `
     <article class="${cardClass}" id="card-${inc.incident_id}">
-      <div class="inc-head">
-        <div class="inc-head-left">
+      <div class="inc-head" style="padding: 10px 14px;">
+        <div class="inc-head-left" style="gap: 8px; align-items: center;">
           <span class="inc-badge ${isRunaway ? "badge-runaway" : "badge-normal"}">
             [${escapeHtml(inc.classification)}]
           </span>
-          ${isRunaway ? '<span class="inc-tier">CRITICAL - TIER 0</span>' : ''}
-          <span class="inc-stage">${escapeHtml(stage)}</span>
-          <span class="inc-resource">${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
+          <span class="inc-resource" style="font-weight: 600;">${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
+          <span class="inc-stage" style="font-size: 10px;">[${escapeHtml(stage)}]</span>
+          ${blockedList}
         </div>
-        <div class="inc-time">
-          ${formatTimestamp(inc.timestamp)} (${formatRelativeTime(inc.timestamp)})
+        <div class="inc-time" style="font-size: 11px;">
+          ${formatTimestamp(inc.timestamp)} &bull; ${formatRelativeTime(inc.timestamp)}
         </div>
       </div>
 
-      <div class="inc-body">
-        <!-- Multi-Dimensional Telemetry Grid -->
-        <div class="inc-telemetry-grid">
-          <div class="tele-box">
-            <span class="tele-k">Unique Callers</span>
+      <div class="inc-body" style="padding: 10px 14px; gap: 8px;">
+        <!-- Real Telemetry Grid -->
+        <div class="inc-telemetry-grid" style="grid-template-columns: repeat(5, 1fr); gap: 6px;">
+          <div class="tele-box" style="padding: 6px 8px;">
+            <span class="tele-k">Callers</span>
             <span class="tele-v">${escapeHtml(String(callers))}</span>
           </div>
-          <div class="tele-box">
-            <span class="tele-k">Traffic Count</span>
-            <span class="tele-v">${escapeHtml(String(count))}/min</span>
+          <div class="tele-box" style="padding: 6px 8px;">
+            <span class="tele-k">Traffic</span>
+            <span class="tele-v">${escapeHtml(String(count))}/m</span>
           </div>
-          <div class="tele-box">
-            <span class="tele-k">Rolling Baseline</span>
-            <span class="tele-v">${escapeHtml(String(baseline))}/min</span>
+          <div class="tele-box" style="padding: 6px 8px;">
+            <span class="tele-k">Baseline</span>
+            <span class="tele-v">${escapeHtml(String(baseline))}/m</span>
           </div>
-          <div class="tele-box">
-            <span class="tele-k">Traffic Delta</span>
+          <div class="tele-box" style="padding: 6px 8px;">
+            <span class="tele-k">Delta</span>
             <span class="tele-v ${Number(delta) > 0 ? "delta-surge" : ""}">${Number(delta) > 0 ? "+" : ""}${escapeHtml(String(delta))}</span>
           </div>
-          <div class="tele-box">
+          <div class="tele-box" style="padding: 6px 8px;">
             <span class="tele-k">Confidence</span>
             <span class="tele-v">${escapeHtml(confidence)}</span>
           </div>
         </div>
 
-        ${isRunaway ? `
-        <!-- Trajectory Bars (Visual Single-Caller Surge) -->
-        <div class="trajectory-box">
-          <div class="trajectory-head">
-            <span style="color: var(--text-muted); font-weight: 600;">EXECUTION TRAJECTORY (SINGLE CALLER RETRY LOOP)</span>
-            <span style="color: var(--state-danger); font-weight: 700;">THRESHOLD BREACHED</span>
-          </div>
-          <div class="trajectory-bars">
-            <div class="bar-step" style="height: 12%;"></div>
-            <div class="bar-step" style="height: 15%;"></div>
-            <div class="bar-step" style="height: 18%;"></div>
-            <div class="bar-step" style="height: 22%;"></div>
-            <div class="bar-step" style="height: 38%;"></div>
-            <div class="bar-step" style="height: 60%;"></div>
-            <div class="bar-step step-surge" style="height: 88%;"></div>
-            <div class="bar-step step-surge" style="height: 100%;"></div>
-          </div>
-        </div>
-        ` : ''}
-
-        <!-- Bedrock Sentinel Synthesis -->
-        <div class="reasoning-box">
-          <span class="reasoning-label">AWS Bedrock Sentinel Analysis</span>
-          <p class="reasoning-text">
-            ${escapeHtml(inc.bedrock_explanation || inc.explanation || "No explanation recorded.")}
+        ${inc.bedrock_explanation ? `
+        <!-- Genuine Bedrock Rationale from DynamoDB -->
+        <div class="reasoning-box" style="padding: 8px 10px; margin-top: 2px;">
+          <p class="reasoning-text" style="font-size: 12px; line-height: 1.45; margin: 0;">
+            ${escapeHtml(inc.bedrock_explanation)}
           </p>
         </div>
+        ` : ''}
       </div>
 
-      <div class="inc-actions">
+      <div class="inc-actions" style="padding: 8px 14px; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">
         <div class="action-left">
           ${actionHtml}
         </div>
-        <button class="btn-toggle-json" onclick="toggleRawDrawer('${inc.incident_id}')">Inspect JSON Payload</button>
+        <button class="btn-toggle-json" onclick="toggleRawDrawer('${inc.incident_id}')" style="font-size: 11px; padding: 3px 8px;">View JSON</button>
       </div>
 
       <div class="json-drawer" id="raw-${inc.incident_id}">
