@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuse — Autonomous Cloud Cost Guardrail & Surgical WAF Circuit Breaker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Dedicated Landing Page Light-Theme Extensions */
+    .landing-nav-btn {
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+    .btn-nav-outline {
+      border: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+    }
+    .btn-nav-outline:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+    .btn-nav-primary {
+      background: var(--brand-primary);
+      color: #ffffff;
+      border: 1px solid var(--brand-primary);
+    }
+    .btn-nav-primary:hover {
+      background: #003da6;
+      box-shadow: 0 2px 6px rgba(0, 74, 198, 0.2);
+    }
+
+    /* Hero Section */
+    .landing-hero {
+      padding: 64px 0 40px 0;
+      text-align: center;
+      max-width: 880px;
+      margin: 0 auto;
+    }
+    .landing-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--brand-primary);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+    }
+    .landing-title {
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: var(--text-primary);
+      line-height: 1.15;
+      margin-bottom: 18px;
+    }
+    .landing-title span {
+      color: var(--brand-primary);
+    }
+    .landing-subtitle {
+      font-size: 18px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 680px;
+      margin: 0 auto 32px auto;
+    }
+    .cta-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .cta-primary {
+      background: var(--brand-primary);
+      color: #ffffff;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 74, 198, 0.25);
+      transition: all 0.2s ease;
+    }
+    .cta-primary:hover {
+      background: #003da6;
+      transform: translateY(-1px);
+    }
+    .cta-secondary {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+    .cta-secondary:hover {
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
+      transform: translateY(-1px);
+    }
+
+    /* Comparison Table Bento */
+    .comparison-section {
+      margin: 40px 0;
+    }
+    .comparison-table-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    .comp-table th {
+      background: var(--bg-subtle);
+      padding: 14px 18px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .comp-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-secondary);
+    }
+    .comp-table tr:last-child td {
+      border-bottom: none;
+    }
+    .comp-highlight-row {
+      background: var(--bg-highlight);
+      font-weight: 600;
+    }
+
+    /* How It Works Steps */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--brand-primary);
+      background: var(--bg-subtle);
+      width: fit-content;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .step-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .step-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Trust & Security Strip */
+    .trust-strip {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 24px;
+      margin: 32px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .trust-text h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 4px 0;
+    }
+    .trust-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="nav-inner">
+        <div class="nav-left">
+          <div class="brand">
+            <span class="brand-icon">F</span>
+            <span class="brand-title">FUSE</span>
+            <span class="brand-tag">AUTONOMOUS CLOUD GUARDRAIL</span>
+          </div>
+        </div>
+        <div class="nav-right" style="gap: 10px;">
+          <a href="index.html" class="landing-nav-btn btn-nav-outline">Live Console Demo</a>
+          <a href="onboarding.html" class="landing-nav-btn btn-nav-primary">Connect Account &rarr;</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Canvas -->
+    <main class="content-canvas" style="gap: 40px;">
+      <!-- Hero Section -->
+      <section class="landing-hero">
+        <div class="landing-pill">
+          <span class="ping-dot"></span>
+          <span>Zero-Latency Out-of-Band Sentinel &bull; AWS ap-south-1</span>
+        </div>
+        <h1 class="landing-title">
+          Stop runaway serverless costs <span>before</span> you wake up to the bill.
+        </h1>
+        <p class="landing-subtitle">
+          Fuse is the cognitive circuit breaker for AWS APIs. It detects infinite client retry loops and recursive agent calls in under 90 seconds &mdash; surgically blocking rogue IPs at the AWS WAF edge without disrupting legitimate paying customers.
+        </p>
+        <div class="cta-row">
+          <a href="onboarding.html" class="cta-primary">Protect Your API in 60s &rarr;</a>
+          <a href="index.html" class="cta-secondary">Explore Operator Console</a>
+        </div>
+      </section>
+
+      <!-- 3-Step Flow -->
+      <section>
+        <div class="section-badge-row">
+          <span class="section-mono-tag">01 / HOW IT WORKS</span>
+          <span class="section-sub-tag">Completely serverless &bull; Zero code changes required</span>
+        </div>
+        <div class="steps-grid">
+          <div class="step-card tilt-3d">
+            <span class="step-num">STEP 01</span>
+            <h3>1-Click Cross-Account Role</h3>
+            <p>
+              Deploy our verified CloudFormation template in your AWS account. Fuse gets scoped, read-only CloudWatch metric access and WAF IP Set edit permissions via short-lived <code>sts:AssumeRole</code>. Zero IAM credentials shared.
+            </p>
+          </div>
+
+          <div class="step-card tilt-3d">
+            <span class="step-num">STEP 02</span>
+            <h3>Continuous Bedrock Sentinel</h3>
+            <p>
+              EventBridge polls CloudWatch metrics every 60 seconds completely out-of-band. Our deterministic decision engine and Amazon Bedrock evaluate caller diversity, volume deltas, and deployment heartbeats without adding 1ms of proxy latency.
+            </p>
+          </div>
+
+          <div class="step-card tilt-3d">
+            <span class="step-num">STEP 03</span>
+            <h3>Surgical WAF Isolation</h3>
+            <p>
+              When a runaway loop or single-caller spike is detected, Fuse immediately appends the offending IP to AWS WAFv2. Bad callers get dropped with HTTP 403 at the regional edge; all legitimate users keep flowing with 100% uptime.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Strategy Comparison Table -->
+      <section class="comparison-section">
+        <div class="section-badge-row">
+          <span class="section-mono-tag">02 / ARCHITECTURAL COMPARISON</span>
+          <span class="section-sub-tag">Why static alarms and global stage throttles fail in production</span>
+        </div>
+        <div class="comparison-table-wrapper tilt-3d">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Protection Strategy</th>
+                <th>Flash Sale Surge (2,000 unique buyers)</th>
+                <th>Buggy Retry Loop (1 caller, rapid retries)</th>
+                <th>Production Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>No Guardrail</strong></td>
+                <td>Normal operation</td>
+                <td>Thousands of dollars billed in minutes</td>
+                <td><span class="text-crimson">Unbounded financial liability</span></td>
+              </tr>
+              <tr>
+                <td><strong>Static CloudWatch Alarm</strong></td>
+                <td>Tripped &amp; Alerted (False Outage)</td>
+                <td>Alerts on-call engineer (hours late)</td>
+                <td><span class="text-amber">Kills revenue or remediates too late</span></td>
+              </tr>
+              <tr>
+                <td><strong>Global Stage Throttle</strong></td>
+                <td>Preserves compute</td>
+                <td>Kills 100% of traffic (Collateral Outage)</td>
+                <td><span class="text-crimson">Total outage for paying customers</span></td>
+              </tr>
+              <tr class="comp-highlight-row">
+                <td><strong>Fuse Cognitive Guardrail</strong></td>
+                <td><span class="text-green">&check; Preserved (High diversity)</span></td>
+                <td><span class="text-crimson">&cross; Rogue IP blocked in WAF</span></td>
+                <td><span class="text-green">Zero collateral damage &bull; Auto-recovering</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Security Guarantee Strip -->
+      <section class="trust-strip tilt-3d">
+        <div class="trust-text">
+          <h4>Zero-Trust Security &amp; Isolation</h4>
+          <p>
+            You never provide AWS Access Keys. Fuse operates via standard AWS IAM Cross-Account trust policies with secret per-tenant <code>ExternalId</code>. Revoke access with 1 click at any time by deleting the CloudFormation stack.
+          </p>
+        </div>
+        <a href="onboarding.html" class="landing-nav-btn btn-nav-primary" style="white-space: nowrap;">Get Started Free &rarr;</a>
+      </section>
+    </main>
+
+    <!-- Global Footer -->
+    <footer class="bottom-footer">
+      <div class="footer-inner">
+        <div class="footer-brand-info">
+          <strong>FUSE</strong> &bull; AWS Autonomous FinOps Guardrail &bull; Built by Pranjul Chaurasiya
+        </div>
+        <div class="footer-links">
+          <a href="index.html">Operator Console</a>
+          <span>&bull;</span>
+          <a href="onboarding.html">Onboarding Portal</a>
+          <span>&bull;</span>
+          <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">GitHub Repository</a>
+          <span>&bull;</span>
+          <span>Amazon Bedrock</span>
+          <span>&bull;</span>
+          <span>ap-south-1</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
