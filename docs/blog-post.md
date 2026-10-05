@@ -66,11 +66,27 @@ Fuse operates completely out-of-band to introduce **zero latency** to your user-
         └─────────────────┘
 ```
 
+### Tech Stack
+* **Compute**: AWS Lambda (Python 3.12, boto3)
+* **Scheduling**: Amazon EventBridge (1-minute rate rule)
+* **Telemetry**: Amazon CloudWatch (Metrics & Logs)
+* **Cognitive Engine**: Amazon Bedrock (Converse API with `toolConfig`, Claude 3.5 Haiku / Nova Micro)
+* **State & Audit**: Amazon DynamoDB (On-Demand tables: `Deployments`, `Incidents`, `ApprovalQueue`)
+* **Control Plane API**: Amazon API Gateway (REST API with API Key auth and scoped CORS)
+* **Frontend**: AWS Amplify Hosting (Vanilla HTML/CSS/JS precision console)
+* **Infra: AWS SAM**: Infrastructure provisioned declaratively via `template.yaml` and `samconfig.toml`
+
 ### Key Architectural Pillars:
 1. **Single Responsibility Lambdas**: Telemetry ingestion (`poller`), classification (`reasoner`), remediation (`remediator`), and approval handling (`approve-action`) are strictly decoupled.
 2. **Decoupled Control Plane**: The operator console and incident APIs run on an isolated API Gateway (`guardrail-control-api`). Even if a compromised target API is throttled to 0 requests/sec, operators never lose dashboard access.
 3. **Deployment Heartbeat Reconciliation**: CI/CD pipelines write a lightweight release heartbeat to DynamoDB (`Deployments`). When Bedrock evaluates a traffic surge, it factors in recent code releases to prevent false alarms during planned rollouts.
 4. **Fail-Closed Safety**: If Bedrock encounters rate limits or upstream timeouts, the system safely falls back to conservative protection (`RUNAWAY` classification with `is_fallback: true`).
+5. **Declarative Serverless Infrastructure**: Core infrastructure is managed as code via AWS SAM (`template.yaml`), ensuring reproducible deployments and clean stack isolation.
+
+### Multi-Tenant SaaS Foundation & Cross-Account Security
+Beyond the single-account demo architecture, Fuse includes an architectural foundation for multi-tenant SaaS governance. To safely inspect and remediate workloads across external customer AWS accounts without storing permanent credentials, customer onboarding is automated via a dedicated CloudFormation template (`infra/cloudformation/fuse-customer-onboarding.yaml`).
+
+This template provisions a customer-side cross-account IAM role with strict least-privilege permissions. Crucially, the trust policy enforces a mandatory, tenant-unique `sts:ExternalId` condition string. By validating this cryptographic `ExternalId` during every `sts:AssumeRole` handshake, Fuse completely eliminates the Confused Deputy vulnerability—guaranteeing that in a multi-tenant SaaS foundation, one customer can never trick the central control plane into manipulating another tenant's API Gateway stages.
 
 ---
 

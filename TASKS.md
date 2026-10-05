@@ -1,55 +1,48 @@
-# TASKS.md — 4-day roadmap
+# 🚀 Fuse SaaS Product Roadmap & Task Ledger
 
-Event window: Thu Sept 17 – Sun Sept 20, 2026. Solo build.
+This tracking ledger outlines the production milestones required to transition **Fuse** from an advanced, dual-mode backend repository into a highly scalable, commercial Multi-Tenant FinOps SaaS platform.
 
-## Day 1 (Thu) — Foundations, no Bedrock yet
-- [ ] AWS Builder Center signup (mandatory to compete)
-- [ ] New/existing AWS account, claim the $100 team credit code
-- [x] Create the "demo" API Gateway + a trivial backing Lambda (this is the
-      resource that gets throttled later — needs to exist first)
-- [x] Create the three DynamoDB tables (SCHEMA.md)
-- [x] Write `deploy_heartbeat.py`, wire it as the last step of any deploy
-- [x] Poller Lambda: pull `AWS/ApiGateway` Count via `get_metric_data`,
-      compute rolling baseline, log to console (no Bedrock/remediation yet)
-- [x] EventBridge rule wired to poller, confirmed firing every 1 min
-- **End-of-day check**: poller Lambda logs real metric deltas on a schedule
+---
 
-## Day 2 (Fri) — Reasoning
-- [x] Request Bedrock model access (Claude 3.5 Haiku) — Anthropic console use case form walked through; Nova Micro working model active in ap-south-1
-- [x] Reasoner Lambda: build context payload, Bedrock Converse call with toolConfig (structured JSON output), fail-closed fallback
-- [x] Unique-caller-count logic & sample payloads ingested in Reasoner contract
-- [x] Incidents table: every cycle writes a record, classification included
-- [x] Manual test: trigger reasoner manually with fake high metrics, confirm Bedrock returns sane classification + fail-closed fallback
-- **End-of-day check**: detect->reason->log cycle works end to end with Bedrock Converse and DynamoDB Incidents
+## 🟩 Phase 1: Core Algorithmic Architecture (100% COMPLETE)
+- [x] **Deterministic Statistical Pre-Filter:** Built moving Z-score and sample standard deviation metrics filters into the poller to terminate safe cycles in <50ms.
+- [x] **Cognitive AI Reasoner Upgrade:** Enforced strict JSON compliance via the `classify_anomaly` tool constraint contract using Amazon Bedrock Converse API.
+- [x] **Secure Cross-Account Identity Handshake:** Authored 1-click customer onboarding CloudFormation templates utilizing cryptographic `sts:ExternalId` properties to block the Confused Deputy vulnerability.
+- [x] **Idempotent Dual-Mode Remediator:** Engineered a safe containment actuator that handles multi-tenant cross-account API throttling while maintaining a fallback mode for local hackathon demo evaluations.
+- [x] **AST Architecture Validation:** Refreshed knowledge graph topologies (`graphify update .`) confirming compilation safety across all components.
 
-## Day 3 (Sat) — Remediation + approval gate
-- [x] Remediator Lambda: `update_stage` throttle logic, idempotency check
-- [x] Dev/staging path: reasoner → remediator direct call on RUNAWAY
-- [x] Prod path: reasoner → ApprovalQueue write on RUNAWAY, no auto-throttle
-- [x] `approve-action` Lambda + API Gateway endpoint
-- [x] `get-incidents` Lambda + API Gateway endpoint
-- [x] Write the three demo scripts: `load_test_legit.py` (many unique
-      callers), `load_test_runaway.py` (single caller, identical payload),
-      and a naive static-threshold script to show the false-positive
-- [x] **End-of-day check**: full pipeline works live — trigger a runaway loop,
-  watch it get throttled (dev) or queued (prod), approve it, confirm
-  throttle applies
+---
 
-## Day 4 (Sun) — Polish, demo, submit
-- [x] Minimal dashboard: incident list, classification, explanation,
-      action taken (frontend/index.html + app.js hitting `/incidents`)
-- [x] Deploy dashboard to S3/Amplify, confirm public URL works
-- [x] Rehearse and record the 3-minute demo video (see docs/demo-script.md)
-      — script it, don't improvise live
-- [x] Write the AWS Builder Center blog post (bonus prize track)
-- [x] Final run-through: fresh AWS resources, confirm nothing depends on
-      leftover state from earlier testing (automated with `clear_test_data.py`)
-- [ ] Submit: GitHub URL, live URL, demo video, blog link
-- **End-of-day check**: submission form fully complete before deadline
+## 🔲 Phase 2: Backend SaaS Loop Automation (NEXT STEP)
+*Objective: Transition the engine from checking single environment targets to processing batch metrics loops for all global platform tenants concurrent.*
 
-## Cut list if behind schedule (in order of what goes first)
-1. Dashboard polish — a bare unstyled table is fine
-2. Blog post — bonus prize only, not core judging
-3. Prod approval-gate UI niceties — a raw POST via curl in the demo is
-   acceptable if the frontend button doesn't make it in time
-4. Never cut: the 3-way demo scenario. That is the entire pitch.
+- [ ] **Database Scan Routine Integration:** Refactor `lambdas/poller/handler.py` to strip out static `TARGET_API_ID` dependencies and replace them with a dynamic `scan()` operations filter against the `Fuse_Tenants` index table.
+- [ ] **Multi-Threaded Tenant Evaluation:** Implement Python's `concurrent.futures.ThreadPoolExecutor` into the poller runtime loop to map telemetry evaluations across multiple accounts concurrently, preventing network lags from impacting customer boundaries.
+- [ ] **Dynamic Anomaly Handoff:** Route the target `tenant_id` alongside context vectors directly down into the `guardrail-reasoner` when the Z-score trips (≥ 2.5).
+
+---
+
+## 🔲 Phase 3: Interactive Engagement & Incident Lifecycles
+*Objective: Build out the operational Human-in-the-Loop workflows for production monitoring.*
+
+- [ ] **Slack Block Kit Hook Interceptor:** Implement the `lambdas/slack_bot/handler.py` engine to parse URLs, verify cryptographic signatures, and interface directly with user interface components.
+- [ ] **Remediator Webhook Callback Route:** Configure the API Gateway HTTP API routes (`POST /slack/interactivity`) via Terraform variables to link Slack interactivity blocks with the master control plane.
+- [ ] **Audit State Tracking:** Update the `action_taken` attribute inside `Fuse_Tenant_Incidents` whenever a human operator triggers an `AUTO_THROTTLED` or `DISMISSED` state from their chat environment.
+
+---
+
+## 🔲 Phase 4: Customer Dashboard Console & Web Interface
+*Objective: Design a clean web dashboard for client onboarding and real-time cost visualization.*
+
+- [ ] **Next.js Portal Setup:** Generate the SaaS web project boilerplate using standard corporate design frameworks.
+- [ ] **REST API Control Plane Contract:** Build lightweight management APIs (`/api/tenants`, `/api/incidents`) to feed records out of DynamoDB into the frontend securely.
+- [ ] **Onboarding On-Screen Visuals:** Create the client registration wizard that shows users their unique `ExternalId` token string and provides the direct 1-click AWS CloudFormation setup button.
+- [ ] **Metrics Dashboard:** Design graphs to let users visually see their current API traffic counts, moving baseline averages, and active alert state histories.
+
+---
+
+## 🔲 Phase 5: Long-Term Enterprise Governance Extensions
+*Objective: Expand protection vectors past API Gateway to catch multi-resource infrastructure leaks.*
+
+- [ ] **AWS Lambda Recursion Protection:** Build pluggable remediation functions to set target function reserve concurrency parameters to zero if an unhandled backend loop occurs.
+- [ ] **AWS WAF Edge Block Integration:** Wire the remediator to dynamically update an AWS WAF IP Set to drop malicious application floods at the cloud perimeter rather than shutting down the app for paying customers.

@@ -1,0 +1,11 @@
+# infra/terraform/terraform.tfvars.example
+
+aws_region           = "ap-south-1"
+environment          = "production"
+target_api_id        = "your-api-id-here"
+target_api_name      = "your-api-name"
+target_stage         = "prod"
+minimum_volume_floor = 50
+z_score_threshold    = 2.5
+bedrock_model_id     = "apac.amazon.nova-micro-v1:0"
+window_minutes       = 15

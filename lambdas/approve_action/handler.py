@@ -71,28 +71,43 @@ def lambda_handler(event, context):
     decision = str(body.get("decision", "APPROVED")).upper()
     now_epoch = int(time.time())
 
-    # 3. Lookup item in ApprovalQueue or Incidents to get resource and stage
+    # 3. Lookup item in ApprovalQueue or Incidents to get resource, stage, and source_ips
     resource = "guardrail-demo-api"
     stage = "prod"
+    source_ips = body.get("source_ips", [])
     try:
         q_item = approval_table.get_item(Key={"approval_id": incident_id}).get("Item")
         if q_item:
             resource = q_item.get("resource", resource)
             stage = q_item.get("stage", stage)
+            if not source_ips and q_item.get("source_ips"):
+                source_ips = q_item.get("source_ips")
     except Exception as e:
         logger.warning(f"Could not fetch ApprovalQueue item for {incident_id}: {e}")
+
+    if not source_ips:
+        try:
+            inc_item = incidents_table.get_item(Key={"incident_id": incident_id}).get("Item")
+            if inc_item and inc_item.get("source_ips"):
+                source_ips = inc_item.get("source_ips")
+            elif inc_item and inc_item.get("blocked_ips"):
+                source_ips = inc_item.get("blocked_ips")
+        except Exception as e:
+            logger.warning(f"Could not fetch Incidents item for {incident_id}: {e}")
 
     throttled = False
 
     if decision == "APPROVED":
-        # 4. Trigger Remediator Lambda to throttle stage
-        logger.info(f"Decision APPROVED: Invoking Remediator for {resource} [{stage}]...")
+        # 4. Trigger Remediator Lambda to block offending IPs via WAF
+        logger.info(f"Decision APPROVED: Invoking Remediator for {resource} [{stage}], IPs: {source_ips}...")
         try:
             rem_resp = lambda_client.invoke(
                 FunctionName=REMEDIATOR_FUNCTION_NAME,
                 InvocationType="RequestResponse",
                 Payload=json.dumps({
+                    "action": "BLOCK",
                     "incident_id": incident_id,
+                    "source_ips": source_ips,
                     "resource": resource,
                     "stage": stage,
                     "trigger_source": "human_approval",
@@ -121,7 +136,7 @@ def lambda_handler(event, context):
             incidents_table.update_item(
                 Key={"incident_id": incident_id},
                 UpdateExpression="SET action_taken = :act",
-                ExpressionAttributeValues={":act": "APPROVED_AND_THROTTLED"},
+                ExpressionAttributeValues={":act": "APPROVED_AND_BLOCKED"},
             )
         except Exception as e:
             logger.warning(f"Failed to update Incidents table for {incident_id}: {e}")

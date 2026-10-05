@@ -1,14 +1,16 @@
 # infra/setup-notes.md — Setup Notes & Manual / CLI Commands
 
+> **Note — Infrastructure as Code (AWS SAM)**: Manual CLI commands below document the Day 1 baseline. The entire infrastructure is now packaged and provisioned declaratively via **AWS SAM (template.yaml)** under stack `fuse-sam`. Previous Terraform modules in `infra/legacy-terraform/` are deprecated.
+
 Target Region: `ap-south-1` (Mumbai) — locked across all services.
 
 ### Active Demo Resources (Deployed):
 - **API Gateway ID**: `poim5xmgs2`
 - **Invoke URL**: `https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod`
-- **Backing Lambda**: `guardrail-demo-target` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-demo-target`)
+- **Backing Lambda**: `guardrail-demo-target` (`arn:aws:lambda:ap-south-1:<account-id>:function:guardrail-demo-target`)
 - **DynamoDB Tables**: `Deployments`, `Incidents`, `ApprovalQueue`
-- **Poller Lambda**: `guardrail-poller` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-poller`)
-- **Reasoner Lambda**: `guardrail-reasoner` (`arn:aws:lambda:ap-south-1:515903395012:function:guardrail-reasoner`)
+- **Poller Lambda**: `guardrail-poller` (`arn:aws:lambda:ap-south-1:<account-id>:function:guardrail-poller`)
+- **Reasoner Lambda**: `guardrail-reasoner` (`arn:aws:lambda:ap-south-1:<account-id>:function:guardrail-reasoner`)
 - **EventBridge Rule**: `guardrail-poller-schedule` (`rate(1 minute)`)
 
 ---
@@ -211,7 +213,7 @@ aws apigateway update-stage \
 1. **Lambda Console**:
    - Go to **AWS Lambda** > **Create function**.
    - Function name: `guardrail-demo-target`, Runtime: `Python 3.12`, Architecture: `x86_64`.
-   - Paste code from [lambdas/demo_api/handler.py](file:///c:/Users/pranj/Documents/Fuse/lambdas/demo_api/handler.py) and click **Deploy**.
+   - Paste code from [lambdas/demo_api/handler.py](../lambdas/demo_api/handler.py) and click **Deploy**.
 2. **API Gateway Console**:
    - Go to **API Gateway** > **Create API** > **REST API** (Build).
    - API name: `guardrail-demo-api`, Endpoint Type: `Regional`.

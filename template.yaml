@@ -1,0 +1,536 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Fuse: Cognitive Circuit Breaker for AWS Workloads.
+  Autonomous financial guardrail powered by EventBridge, Amazon Bedrock,
+  DynamoDB, and API Gateway stage throttling.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 128
+    Architectures:
+      - x86_64
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    Description: Deployment environment tier (e.g., dev, staging, production).
+
+  TargetApiId:
+    Type: String
+    Description: Target Amazon API Gateway REST API ID monitored and throttled by Fuse.
+
+  TargetApiName:
+    Type: String
+    Default: guardrail-demo-api
+    Description: Target Amazon API Gateway REST API Name.
+
+  TargetStage:
+    Type: String
+    Default: prod
+    Description: Target API deployment stage lifecycle to attach breaker rules to.
+
+  MinimumVolumeFloor:
+    Type: Number
+    Default: 50
+    Description: Minimum request volume per minute before evaluating statistical anomaly gates.
+
+  ZScoreThreshold:
+    Type: Number
+    Default: 2.5
+    Description: Mathematical deviation Z-score limit factor before waking up Amazon Bedrock reasoning.
+
+  BedrockModelId:
+    Type: String
+    Default: apac.amazon.nova-micro-v1:0
+    Description: Amazon Bedrock cross-region inference profile ID or model ID for structured anomaly classification.
+
+  WindowMinutes:
+    Type: Number
+    Default: 15
+    Description: Historical telemetry window in minutes for moving baseline calculations.
+
+  AllowedOrigin:
+    Type: String
+    Default: "https://main.d1hndpgpwb40h8.amplifyapp.com"
+    Description: Allowed CORS origin for the Control API.
+
+  TargetLambdaLogGroup:
+    Type: String
+    Default: /aws/lambda/guardrail-demo-target
+    Description: CloudWatch Log Group of the target demo Lambda for unique caller log extraction.
+
+  WafIpSetId:
+    Type: String
+    Default: ""
+    Description: WAF IP Set ID for storing blocked IPs. Created by scripts/setup_waf.py.
+
+  WafIpSetName:
+    Type: String
+    Default: fuse-blocked-ips
+    Description: WAF IP Set name.
+
+  WafWebAclId:
+    Type: String
+    Default: ""
+    Description: WAF Web ACL ID. Created by scripts/setup_waf.py.
+
+  WafWebAclName:
+    Type: String
+    Default: fuse-guardrail-acl
+    Description: WAF Web ACL name.
+
+  RecoveryWindowMinutes:
+    Type: Number
+    Default: 15
+    Description: Minutes before auto-recovery removes WAF IP blocks.
+
+  CallerDominanceThreshold:
+    Type: Number
+    Default: 0.85
+    Description: Threshold for single-caller dominance detection.
+
+Resources:
+  # =========================================================================
+  # 1. State Store: DynamoDB Tables (Auto-Named for Isolation)
+  # =========================================================================
+  DeploymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: deployment_id
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: deployment_id
+          AttributeType: S
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Engine
+          Value: Fuse-Guardrail
+        - Key: Component
+          Value: Telemetry-Heartbeat
+
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: incident_id
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: environment
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      GlobalSecondaryIndexes:
+        - IndexName: environment-timestamp-index
+          KeySchema:
+            - AttributeName: environment
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Engine
+          Value: Fuse-Guardrail
+        - Key: Component
+          Value: Incident-Ledger
+
+  ApprovalQueueTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: approval_id
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: approval_id
+          AttributeType: S
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Engine
+          Value: Fuse-Guardrail
+        - Key: Component
+          Value: Human-In-The-Loop
+
+  # =========================================================================
+  # 2. Control Plane: REST API Gateway
+  # =========================================================================
+  ControlApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: guardrail-control-api
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key'"
+        AllowOrigin: !Sub "'${AllowedOrigin}'"
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: fuse-control-api-usage-plan
+
+
+  # =========================================================================
+  # 3. Autonomous Engine: Core Lambda Functions
+  # =========================================================================
+  RemediatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fuse-guardrail-remediator
+      CodeUri: lambdas/remediator
+      Handler: handler.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TARGET_API_ID: !Ref TargetApiId
+          TARGET_API_NAME: !Ref TargetApiName
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          WAF_IP_SET_ID: !Ref WafIpSetId
+          WAF_IP_SET_NAME: !Ref WafIpSetName
+          WAF_WEB_ACL_ID: !Ref WafWebAclId
+          WAF_WEB_ACL_NAME: !Ref WafWebAclName
+      Policies:
+        - Statement:
+            - Sid: ApiGatewayThrottleAccess
+              Effect: Allow
+              Action:
+                - apigateway:GET
+                - apigateway:PATCH
+                - apigateway:PUT
+              Resource:
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages/*"
+            - Sid: IncidentsUpdateAccess
+              Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: !GetAtt IncidentsTable.Arn
+            - Sid: WAFIPSetManagement
+              Effect: Allow
+              Action:
+                - wafv2:GetIPSet
+                - wafv2:UpdateIPSet
+                - wafv2:ListIPSets
+              Resource:
+                - !Sub "arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/${WafIpSetName}/*"
+
+  ReasonerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fuse-guardrail-reasoner
+      CodeUri: lambdas/reasoner
+      Handler: handler.lambda_handler
+      Timeout: 45
+      MemorySize: 256
+      Environment:
+        Variables:
+          BEDROCK_REGION: !Ref AWS::Region
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          DEPLOYMENTS_TABLE: !Ref DeploymentsTable
+      Policies:
+        - Statement:
+            - Sid: BedrockInvokeAccess
+              Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}"
+                - "arn:aws:bedrock:*::foundation-model/amazon.nova-micro-v1:0"
+            - Sid: DynamoDBIncidentsAndApprovalQueueAccess
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:UpdateItem
+              Resource:
+                - !GetAtt IncidentsTable.Arn
+                - !GetAtt DeploymentsTable.Arn
+
+  PollerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fuse-guardrail-poller
+      CodeUri: lambdas/poller
+      Handler: handler.lambda_handler
+      Timeout: 30
+      Environment:
+        Variables:
+          API_NAME: !Ref TargetApiName
+          STAGE_NAME: !Ref TargetStage
+          DEPLOYMENTS_TABLE: !Ref DeploymentsTable
+          DEMO_TARGET_LOG_GROUP: !Ref TargetLambdaLogGroup
+          REASONER_FUNCTION_NAME: !Ref ReasonerFunction
+          WINDOW_MINUTES: !Ref WindowMinutes
+          MINIMUM_VOLUME_FLOOR: !Ref MinimumVolumeFloor
+          Z_SCORE_THRESHOLD: !Ref ZScoreThreshold
+          REMEDIATOR_FUNCTION_NAME: !Ref RemediatorFunction
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          RECOVERY_WINDOW_MINUTES: !Ref RecoveryWindowMinutes
+          CALLER_DOMINANCE_THRESHOLD: !Ref CallerDominanceThreshold
+          BEDROCK_ENRICHMENT_ENABLED: "true"
+          TENANTS_TABLE: !Ref FuseTenantsTable
+          MULTI_TENANT_ENABLED: 'false'
+      Policies:
+        - Statement:
+            - Sid: CloudWatchMetricAccess
+              Effect: Allow
+              Action:
+                - cloudwatch:GetMetricData
+                - cloudwatch:ListMetrics
+              Resource: "*"
+            - Sid: DeploymentsReadAccess
+              Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:GetItem
+                - dynamodb:Query
+              Resource: !GetAtt DeploymentsTable.Arn
+            - Sid: TargetDemoLogsAccess
+              Effect: Allow
+              Action:
+                - logs:FilterLogEvents
+                - logs:GetLogEvents
+                - logs:DescribeLogStreams
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TargetLambdaLogGroup}:*"
+            - Sid: ReasonerInvokeAccess
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt ReasonerFunction.Arn
+            - Sid: RemediatorInvokeAccess
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt RemediatorFunction.Arn
+            - Sid: IncidentsTableAccess
+              Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:UpdateItem
+              Resource: !GetAtt IncidentsTable.Arn
+            - Sid: TenantsTableScanAccess
+              Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Fuse_Tenants"
+            - Sid: AssumeTenantRoleAccess
+              Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: "*"
+      Events:
+        EveryMinuteSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+            Description: Triggers the Fuse mathematical pre-filter gate checker every minute.
+
+  GetIncidentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fuse-guardrail-get-incidents
+      CodeUri: lambdas/get_incidents
+      Handler: handler.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          INCIDENTS_TABLE: !Ref IncidentsTable
+      Policies:
+        - Statement:
+            - Sid: IncidentsTableReadAccess
+              Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:Query
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt IncidentsTable.Arn
+                - !Sub "${IncidentsTable.Arn}/index/*"
+      Events:
+        GetIncidentsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /incidents
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+  ApproveActionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fuse-guardrail-approve-action
+      CodeUri: lambdas/approve_action
+      Handler: handler.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          APPROVAL_QUEUE_TABLE: !Ref ApprovalQueueTable
+          INCIDENTS_TABLE: !Ref IncidentsTable
+          REMEDIATOR_FUNCTION_NAME: !Ref RemediatorFunction
+      Policies:
+        - Statement:
+            - Sid: ApprovalQueueAndIncidentsAccess
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource:
+                - !GetAtt ApprovalQueueTable.Arn
+                - !GetAtt IncidentsTable.Arn
+            - Sid: RemediatorInvokeAccess
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt RemediatorFunction.Arn
+      Events:
+        ApprovePathWithId:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /incidents/{incident_id}/approve
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
+        ApprovePathAlias:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /approve
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
+
+  FuseTenantsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Fuse_Tenants
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: tenant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tenant_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  OnboardingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: guardrail-onboarding
+      CodeUri: lambdas/onboarding/
+      Handler: handler.lambda_handler
+      Description: Fuse tenant onboarding API — registers tenants, generates ExternalId, verifies cross-account role.
+      Environment:
+        Variables:
+          TENANTS_TABLE: !Ref FuseTenantsTable
+          CF_TEMPLATE_URL: !Sub 'https://fuse-onboarding-templates.s3.${AWS::Region}.amazonaws.com/fuse-cross-account-role.yaml'
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: TenantsTableAccess
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:Scan
+              Resource: !GetAtt FuseTenantsTable.Arn
+            - Sid: STSAssumeRoleForVerification
+              Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: 'arn:aws:iam::*:role/fuse-guardrail-access'
+      Events:
+        PostTenant:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /tenants
+            Method: post
+        GetTenant:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /tenants/{tenant_id}
+            Method: get
+        VerifyTenant:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlApi
+            Path: /tenants/{tenant_id}/verify
+            Method: post
+
+Outputs:
+  DeploymentsTableName:
+    Description: Name of the Deployments heartbeat DynamoDB table.
+    Value: !Ref DeploymentsTable
+
+  IncidentsTableName:
+    Description: Name of the Incidents audit ledger DynamoDB table.
+    Value: !Ref IncidentsTable
+
+  ApprovalQueueTableName:
+    Description: Name of the ApprovalQueue DynamoDB table.
+    Value: !Ref ApprovalQueueTable
+
+  PollerFunctionArn:
+    Description: ARN of the Poller Lambda function.
+    Value: !GetAtt PollerFunction.Arn
+
+  ReasonerFunctionArn:
+    Description: ARN of the Reasoner Lambda function.
+    Value: !GetAtt ReasonerFunction.Arn
+
+  RemediatorFunctionArn:
+    Description: ARN of the Remediator Lambda function.
+    Value: !GetAtt RemediatorFunction.Arn
+
+  GetIncidentsFunctionArn:
+    Description: ARN of the Get Incidents Lambda function.
+    Value: !GetAtt GetIncidentsFunction.Arn
+
+  ApproveActionFunctionArn:
+    Description: ARN of the Approve Action Lambda function.
+    Value: !GetAtt ApproveActionFunction.Arn
+
+  ControlApiUrl:
+    Description: Base endpoint URL for the Fuse Control API.
+    Value: !Sub "https://${ControlApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  ControlApiKeyId:
+    Description: API Key ID for Control API authentication.
+    Value: !Ref ControlApiApiKey
+
+  ControlApiKeyCommand:
+    Description: AWS CLI command to fetch the secret API Key value.
+    Value: !Sub "aws apigateway get-api-key --api-key ${ControlApiApiKey} --include-value"

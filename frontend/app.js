@@ -3,7 +3,23 @@
  * Connects to AWS Cost Guardrail Control Plane API (ap-south-1)
  */
 
-const CONTROL_API_BASE = "https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod";
+// Configuration loaded from config.js (FUSE_CONFIG) or window fallback
+const cfg = (typeof FUSE_CONFIG !== "undefined") ? FUSE_CONFIG : (typeof window !== "undefined" && window.FUSE_CONFIG ? window.FUSE_CONFIG : {});
+const CONTROL_API_BASE = cfg.CONTROL_API_BASE || "";
+const CONTROL_API_KEY = cfg.API_KEY || "";
+const TARGET_API_URL = cfg.TARGET_API_URL || "";
+
+/**
+ * Returns fetch headers with x-api-key if configured.
+ */
+function getAuthHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  if (CONTROL_API_KEY) {
+    headers["x-api-key"] = CONTROL_API_KEY;
+  }
+  return headers;
+}
+
 let allIncidents = [];
 let autoRefreshTimer = null;
 const POLL_INTERVAL_MS = 6000;
@@ -47,7 +63,7 @@ async function fetchIncidents() {
   try {
     const res = await fetch(`${CONTROL_API_BASE}/incidents?limit=50`, {
       method: "GET",
-      headers: { "Accept": "application/json" }
+      headers: getAuthHeaders({ "Accept": "application/json" })
     });
 
     if (!res.ok) {
@@ -109,6 +125,7 @@ function updateMetrics(incidents) {
   const runaways = incidents.filter(i => i.classification === "RUNAWAY").length;
   const pending = incidents.filter(i => i.action_taken === "PENDING_APPROVAL").length;
   const throttled = incidents.filter(i => 
+    i.action_taken === "IP_BLOCKED" || i.action_taken === "APPROVED_AND_BLOCKED" ||
     i.action_taken === "AUTO_THROTTLED" || i.action_taken === "APPROVED_AND_THROTTLED"
   ).length;
 
@@ -198,7 +215,7 @@ function renderIncidentCard(inc) {
   const count = snapshot.count ?? "0";
   const delta = snapshot.delta ?? "0";
   const baseline = snapshot.baseline ?? "0";
-  const confidence = inc.confidence !== undefined ? `${Math.round(Number(inc.confidence) * 100)}%` : "95%";
+  const confidence = (inc.confidence !== undefined && inc.confidence !== null) ? `${Math.round(Number(inc.confidence) * 100)}%` : "N/A";
 
   let actionHtml = "";
   if (isPending) {
@@ -209,20 +226,32 @@ function renderIncidentCard(inc) {
           <span>AWAITING APPROVAL // PRODUCTION SAFETY GATE</span>
         </div>
         <button class="btn-approve-trip" onclick="approveIncident('${inc.incident_id}', this)">
-          Approve Circuit Trip — Set RateLimit to 0
+          Approve Circuit Trip — Block Offending IPs via WAF
         </button>
       </div>
     `;
-  } else if (inc.action_taken === "AUTO_THROTTLED") {
+  } else if (inc.action_taken === "IP_BLOCKED") {
     actionHtml = `
       <div class="action-status-chip text-crimson">
-        <span>AUTO-THROTTLED (${escapeHtml(stage)}) &mdash; RATE: 0 &bull; DIRECT REMEDIATION</span>
+        <span>WAF IP-BLOCKED &mdash; SURGICAL ISOLATION (OFFENDING IPS BLOCKED)</span>
       </div>
     `;
-  } else if (inc.action_taken === "APPROVED_AND_THROTTLED") {
+  } else if (inc.action_taken === "APPROVED_AND_BLOCKED") {
     actionHtml = `
       <div class="action-status-chip text-crimson">
-        <span>APPROVED &amp; THROTTLED &mdash; 429 TOO MANY REQUESTS ACTIVE</span>
+        <span>APPROVED &amp; WAF BLOCKED &mdash; ISOLATED VIA WAF IP SET</span>
+      </div>
+    `;
+  } else if (inc.action_taken === "AUTO_RECOVERED") {
+    actionHtml = `
+      <div class="action-status-chip text-green">
+        <span>AUTO-RECOVERED &mdash; COOLDOWN EXPIRED, IPS UNBLOCKED</span>
+      </div>
+    `;
+  } else if (inc.action_taken === "AUTO_THROTTLED" || inc.action_taken === "APPROVED_AND_THROTTLED") {
+    actionHtml = `
+      <div class="action-status-chip text-crimson">
+        <span>THROTTLED (${escapeHtml(stage)}) &mdash; STAGE THROTTLED</span>
       </div>
     `;
   } else {
@@ -329,7 +358,7 @@ async function approveIncident(incidentId, btnElement) {
   try {
     const res = await fetch(`${CONTROL_API_BASE}/incidents/${incidentId}/approve`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         resolved_by: "Fuse Operator Console",
         decision: "APPROVED"
@@ -378,8 +407,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-// Target API Live Probe
-const TARGET_API_URL = "https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items";
+// Target API Live Probe (TARGET_API_URL defined in config at top)
 const probeStatusPill = document.getElementById("probe-status-pill");
 const probeStatusText = document.getElementById("probe-status-text");
 const probeThrottleState = document.getElementById("probe-throttle-state");

@@ -78,9 +78,11 @@ def lambda_handler(event, context):
                 "resource": it.get("resource", "guardrail-demo-api"),
                 "environment": it.get("environment", "prod"),
                 "classification": it.get("classification", "UNKNOWN"),
-                "confidence": float(it.get("confidence", 0.0)) if it.get("confidence") else None,
+                "confidence": float(it["confidence"]) if it.get("confidence") is not None else None,
                 "bedrock_explanation": it.get("bedrock_explanation", ""),
                 "action_taken": it.get("action_taken", "NONE"),
+                "blocked_ips": serialize_item(it.get("blocked_ips") or it.get("source_ips", [])),
+                "recovered_at": int(it.get("recovered_at")) if it.get("recovered_at") else None,
                 "metric_snapshot": serialize_item(it.get("metric_snapshot", {})),
                 "deploy_context": serialize_item(it.get("deploy_context", {})),
             })

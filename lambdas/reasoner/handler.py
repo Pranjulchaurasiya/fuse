@@ -1,8 +1,12 @@
-"""Reasoner Lambda: Evaluates traffic anomaly snapshots using Amazon Bedrock Converse API
-with toolConfig for deterministic structured JSON output (classification, confidence, explanation).
+"""Reasoner Lambda: Enrichment service that evaluates traffic anomaly snapshots
+using Amazon Bedrock Converse API with toolConfig for structured JSON output.
 
-Persists every evaluation to DynamoDB `Incidents` table.
-Implements strict fail-closed fallback: any Bedrock failure defaults to RUNAWAY.
+This Lambda is invoked ASYNCHRONOUSLY by the Poller as an optional enrichment step.
+It does NOT invoke the Remediator — remediation decisions are made deterministically
+by the Poller based on statistical analysis.
+
+Persists every evaluation to DynamoDB `Incidents` table as enrichment data.
+Implements strict fail-closed fallback: any Bedrock failure defaults to RUNAWAY classification.
 """
 
 import json
@@ -22,14 +26,10 @@ BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-south-1")
 DEFAULT_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-micro-v1:0")
 INCIDENTS_TABLE_NAME = os.environ.get("INCIDENTS_TABLE", "Incidents")
 DEPLOYMENTS_TABLE_NAME = os.environ.get("DEPLOYMENTS_TABLE", "Deployments")
-APPROVAL_QUEUE_TABLE_NAME = os.environ.get("APPROVAL_QUEUE_TABLE", "ApprovalQueue")
-REMEDIATOR_FUNCTION_NAME = os.environ.get("REMEDIATOR_FUNCTION_NAME", "guardrail-remediator")
 
 bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
 dynamodb_resource = boto3.resource("dynamodb", region_name=AWS_REGION)
-lambda_client = boto3.client("lambda", region_name=AWS_REGION)
 incidents_table = dynamodb_resource.Table(INCIDENTS_TABLE_NAME)
-approval_queue_table = dynamodb_resource.Table(APPROVAL_QUEUE_TABLE_NAME)
 
 CLASSIFY_TOOL_SPEC = {
     "tools": [
@@ -53,12 +53,30 @@ CLASSIFY_TOOL_SPEC = {
                                 "type": "number",
                                 "description": "Confidence score from 0.0 to 1.0.",
                             },
+                            "is_fallback": {
+                                "type": "boolean",
+                                "description": "True if decision was made via stochastic fail-closed fallback.",
+                            },
+                            "metrics_synthesis": {
+                                "type": "object",
+                                "properties": {
+                                    "caller_diversity_score": {
+                                        "type": "number",
+                                        "description": "Calculated unique callers divided by total requests.",
+                                    },
+                                    "deployment_correlation": {
+                                        "type": "boolean",
+                                        "description": "True if an active release heartbeat was registered in the T-20min window.",
+                                    },
+                                },
+                                "required": ["caller_diversity_score", "deployment_correlation"],
+                            },
                             "explanation": {
                                 "type": "string",
-                                "description": "One concise paragraph explaining the technical reasoning for this classification.",
+                                "description": "A concise, 2-sentence empirical summary of analytical rationale.",
                             },
                         },
-                        "required": ["classification", "confidence", "explanation"],
+                        "required": ["classification", "confidence", "is_fallback", "metrics_synthesis", "explanation"],
                     }
                 },
             }
@@ -70,12 +88,20 @@ CLASSIFY_TOOL_SPEC = {
 SYSTEM_PROMPT = [
     {
         "text": (
-            "You are a cloud cost-anomaly classifier protecting serverless workloads.\n"
-            "You will be given metrics and context about a spike in API request volume.\n\n"
-            "Decision guidelines:\n"
-            "- NORMAL: legitimate traffic growth (e.g., many unique callers, high ratio of unique callers to total requests, diverse request payloads, or matches a recent deploy/marketing event). When unique_caller_count is high and request payloads are varied, classify as NORMAL.\n"
-            "- RUNAWAY: a malfunctioning process or agent loop (e.g., single caller or very few callers repeating an identical request/payload at high frequency, no corresponding deploy or traffic-driving event).\n\n"
-            "You MUST call the classify_anomaly tool with classification, confidence, and explanation."
+            "You are the primary cognitive reasoning node for 'Fuse: The Cognitive Circuit Breaker,' "
+            "an enterprise-grade cloud financial guardrail. Your specific directive is to evaluate infrastructure "
+            "telemetry data to differentiate between high-value legitimate business activity spikes and catastrophic "
+            "cloud billing liabilities (such as runaway application loops, recursive LLM token loops, or single-caller application flood attacks).\n\n"
+            "OPERATIONAL BRANCHING:\n"
+            "- NORMAL: Legitimate user behavior, scheduled flash sales, or distributed volumetric surges. Maintain availability.\n"
+            "- RUNAWAY: High caller concentration, infinite code loops, broken retry logic, or single-source scraper spam. Trip circuit.\n\n"
+            "CONTEXTUAL FILTERS:\n"
+            "A. Caller Diversity: Ratio of unique callers to total requests. Healthy (> 0.05) -> NORMAL. Concentrated (single caller dominating) -> RUNAWAY.\n"
+            "B. Deployments: Recent deploy in T-20min window + concentration spike -> strongly indicates code bug loop -> RUNAWAY.\n"
+            "C. Scheduled Events: If Active_Event_Window is true, tolerate higher variance provided diversity is healthy.\n\n"
+            "STRICT STOCHASTIC FAIL-SAFE:\n"
+            "If telemetry is corrupted, incomplete, or missing, default immediately to fail-closed posture: RUNAWAY, is_fallback=true.\n\n"
+            "You MUST output your analysis exclusively by executing the tool call to 'classify_anomaly'."
         )
     }
 ]
@@ -108,6 +134,8 @@ def invoke_bedrock_classifier(context_payload: dict, model_id: str):
             return {
                 "classification": tool_input.get("classification", "RUNAWAY"),
                 "confidence": float(tool_input.get("confidence", 0.8)),
+                "is_fallback": bool(tool_input.get("is_fallback", False)),
+                "metrics_synthesis": tool_input.get("metrics_synthesis", {}),
                 "explanation": tool_input.get("explanation", "Structured tool classification returned without explanation."),
                 "raw_tool_input": tool_input,
                 "stop_reason": response.get("stopReason"),
@@ -129,6 +157,7 @@ def write_incident_record(
     action_taken: str,
     is_fallback: bool,
     model_used: str,
+    metrics_synthesis: dict = None,
 ):
     """Writes evaluation record to DynamoDB Incidents table."""
     clean_snapshot = {
@@ -158,6 +187,12 @@ def write_incident_record(
         "is_fallback": is_fallback,
         "bedrock_model_used": model_used,
     }
+
+    if metrics_synthesis:
+        item["metrics_synthesis"] = {
+            "caller_diversity_score": Decimal(str(round(float(metrics_synthesis.get("caller_diversity_score", 0.0)), 4))),
+            "deployment_correlation": bool(metrics_synthesis.get("deployment_correlation", False)),
+        }
 
     incidents_table.put_item(Item=item)
     logger.info(f"Successfully recorded incident {incident_id} with action_taken='{action_taken}'.")
@@ -207,6 +242,7 @@ def lambda_handler(event, context):
         classification = result["classification"]
         confidence = result["confidence"]
         explanation = result["explanation"]
+        metrics_synthesis = result.get("metrics_synthesis", {})
         raw_bedrock_response = result["raw_tool_input"]
         logger.info(f"Bedrock reasoning result: classification={classification}, confidence={confidence}")
     except Exception as e:
@@ -214,77 +250,62 @@ def lambda_handler(event, context):
         is_fallback = True
         classification = "RUNAWAY"
         confidence = 0.0
+        metrics_synthesis = {"caller_diversity_score": 0.0, "deployment_correlation": False}
         explanation = f"FAIL-CLOSED FALLBACK: Bedrock reasoning failed ({type(e).__name__}: {str(e)}). Defaulted to RUNAWAY for cost safety."
         raw_bedrock_response = {"fallback_error": str(e), "error_type": type(e).__name__}
 
-    # Day 3 Remediation Logic:
-    # 1. If RUNAWAY:
-    #    - dev/staging: auto-throttle via Remediator Lambda
-    #    - prod: write to ApprovalQueue, withhold auto-throttle (PENDING_APPROVAL)
-    # 2. If NORMAL:
-    #    - no remediation action taken (NONE)
-    action_taken = "NONE"
-    remediation_result = None
-
-    if classification == "RUNAWAY":
-        if str(environment).lower() in ["dev", "staging"]:
-            logger.info(f"Environment '{environment}' is dev/staging: invoking Remediator directly...")
-            try:
-                rem_resp = lambda_client.invoke(
-                    FunctionName=REMEDIATOR_FUNCTION_NAME,
-                    InvocationType="RequestResponse",
-                    Payload=json.dumps({
-                        "incident_id": incident_id,
-                        "resource": resource,
-                        "stage": environment,
-                        "trigger_source": "dev_auto",
-                    }),
-                )
-                remediation_result = json.loads(rem_resp["Payload"].read().decode("utf-8"))
-                action_taken = "AUTO_THROTTLED"
-                logger.info(f"Auto-remediation successful: {remediation_result}")
-            except Exception as rem_err:
-                logger.error(f"Auto-remediation invocation failed: {rem_err}", exc_info=True)
-                action_taken = "AUTO_THROTTLE_FAILED"
-        else:
-            # Prod path: write to ApprovalQueue, withhold action
-            logger.info(f"Environment '{environment}' is prod: writing to ApprovalQueue and withholding auto-throttle...")
-            try:
-                approval_queue_table.put_item(
-                    Item={
-                        "approval_id": incident_id,
-                        "incident_id": incident_id,
-                        "status": "PENDING",
-                        "created_at": now_epoch,
-                        "resolved_at": None,
-                        "resolved_by": None,
-                        "resource": resource,
-                        "stage": environment,
-                        "classification": classification,
-                        "explanation": explanation,
-                    }
-                )
-                action_taken = "PENDING_APPROVAL"
-                logger.info(f"Created PENDING approval entry in ApprovalQueue for {incident_id}.")
-            except Exception as q_err:
-                logger.error(f"Failed to write to ApprovalQueue: {q_err}", exc_info=True)
-                action_taken = "APPROVAL_QUEUE_WRITE_FAILED"
-
-    # Persist every evaluation to Incidents table
-    write_incident_record(
-        incident_id=incident_id,
-        timestamp=now_epoch,
-        resource=resource,
-        environment=environment,
-        metric_snapshot=metric_snapshot,
-        deploy_context=deploy_context,
-        classification=classification,
-        confidence=confidence,
-        explanation=explanation,
-        action_taken=action_taken,
-        is_fallback=is_fallback,
-        model_used=model_id,
-    )
+    # Enrichment-only: no remediation action taken by Reasoner.
+    # Remediation is handled deterministically by the Poller.
+    # The Reasoner only provides Bedrock classification for dashboard display.
+    action_taken = "ENRICHMENT_ONLY"
+    
+    # If this was invoked for an existing incident, enrich it in-place
+    existing_incident_id = payload.get("incident_id")
+    if existing_incident_id:
+        incident_id = existing_incident_id
+        try:
+            update_expr = "SET bedrock_explanation = :expl, confidence = :conf, bedrock_model_used = :model, is_fallback = :fb, enriched_at = :eat, classification = :cls"
+            expr_vals = {
+                ":expl": explanation,
+                ":conf": Decimal(str(round(confidence, 2))),
+                ":model": model_id,
+                ":fb": is_fallback,
+                ":eat": now_epoch,
+                ":cls": classification,
+            }
+            if metrics_synthesis:
+                update_expr += ", metrics_synthesis = :ms"
+                expr_vals[":ms"] = {
+                    "caller_diversity_score": Decimal(str(round(float(metrics_synthesis.get("caller_diversity_score", 0.0)), 4))),
+                    "deployment_correlation": bool(metrics_synthesis.get("deployment_correlation", False)),
+                }
+            incidents_table.update_item(
+                Key={"incident_id": incident_id},
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=expr_vals,
+            )
+            action_taken = "ENRICHMENT_APPLIED"
+            logger.info(f"Enriched existing incident {incident_id} with Bedrock classification.")
+        except Exception as enrich_err:
+            logger.warning(f"Failed to enrich incident {incident_id}: {enrich_err}")
+            action_taken = "ENRICHMENT_FAILED"
+    else:
+        # Persist new incident record to Incidents table
+        write_incident_record(
+            incident_id=incident_id,
+            timestamp=now_epoch,
+            resource=resource,
+            environment=environment,
+            metric_snapshot=metric_snapshot,
+            deploy_context=deploy_context,
+            classification=classification,
+            confidence=confidence,
+            explanation=explanation,
+            action_taken=action_taken,
+            is_fallback=is_fallback,
+            model_used=model_id,
+            metrics_synthesis=metrics_synthesis,
+        )
 
     response_body = {
         "incident_id": incident_id,
@@ -294,8 +315,8 @@ def lambda_handler(event, context):
         "classification": classification,
         "confidence": confidence,
         "explanation": explanation,
+        "metrics_synthesis": metrics_synthesis,
         "action_taken": action_taken,
-        "remediation_result": remediation_result,
         "is_fallback": is_fallback,
         "bedrock_model_used": model_id,
         "raw_bedrock_response": raw_bedrock_response,

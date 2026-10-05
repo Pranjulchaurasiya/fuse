@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuse Onboarding</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1, h2 { color: #222; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input[type="text"], input[type="email"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc;
+            border-radius: 4px; box-sizing: border-box;
+        }
+        button {
+            background-color: #0066cc; color: white; border: none;
+            padding: 10px 15px; border-radius: 4px; cursor: pointer;
+            font-size: 16px; width: 100%; margin-top: 10px;
+        }
+        button:hover { background-color: #005bb5; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .info-box {
+            background-color: #e9ecef; padding: 15px;
+            border-radius: 4px; margin-bottom: 15px;
+            word-wrap: break-word;
+        }
+        .error { color: #dc3545; margin-bottom: 15px; }
+        .success { color: #28a745; margin-bottom: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fuse Onboarding</h1>
+        <div id="error-msg" class="error"></div>
+        
+        <!-- Step 1: Register -->
+        <div id="step-1" class="step active">
+            <h2>Step 1: Register</h2>
+            <div class="form-group">
+                <label>Company Email</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label>AWS Account ID</label>
+                <input type="text" id="aws_account_id" required>
+            </div>
+            <div class="form-group">
+                <label>API Gateway ID</label>
+                <input type="text" id="api_gateway_id" required>
+            </div>
+            <div class="form-group">
+                <label>API Stage</label>
+                <input type="text" id="api_stage" value="prod" required>
+            </div>
+            <button onclick="registerTenant()">Register</button>
+        </div>
+
+        <!-- Step 2: Deploy & Verify -->
+        <div id="step-2" class="step">
+            <h2>Step 2: Connect AWS</h2>
+            <p>Deploy the IAM Role in your AWS account so Fuse can monitor it.</p>
+            
+            <div class="info-box">
+                <strong>External ID:</strong> <span id="display-external-id"></span>
+            </div>
+            
+            <a id="cf-launch-btn" href="#" target="_blank" style="text-decoration: none;">
+                <button style="background-color: #ff9900; color: #232f3e;">Launch CloudFormation Stack</button>
+            </a>
+            
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;" />
+            
+            <h3>Verify Connection</h3>
+            <p>Once CloudFormation says "CREATE_COMPLETE", paste the resulting Role ARN below:</p>
+            <div class="form-group">
+                <label>Role ARN</label>
+                <input type="text" id="role_arn" placeholder="arn:aws:iam::123456789012:role/fuse-guardrail-access">
+            </div>
+            <button onclick="verifyTenant()">Verify Role</button>
+        </div>
+
+        <!-- Step 3: Done -->
+        <div id="step-3" class="step">
+            <h2>🎉 All Set!</h2>
+            <div class="success">Connection verified successfully.</div>
+            <p>Fuse will begin monitoring your API Gateway shortly.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000'; // Replace with actual API endpoint
+        let currentTenantId = null;
+
+        async function registerTenant() {
+            document.getElementById('error-msg').innerText = '';
+            const email = document.getElementById('email').value;
+            const aws_account_id = document.getElementById('aws_account_id').value;
+            const api_gateway_id = document.getElementById('api_gateway_id').value;
+            const api_stage = document.getElementById('api_stage').value;
+
+            try {
+                const res = await fetch(`${API_URL}/tenants`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, aws_account_id, api_gateway_id, api_stage })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Registration failed');
+                
+                currentTenantId = data.tenant_id;
+                document.getElementById('display-external-id').innerText = data.external_id;
+                document.getElementById('cf-launch-btn').href = data.cf_launch_url;
+                document.getElementById('role_arn').value = data.expected_role_arn;
+                
+                document.getElementById('step-1').classList.remove('active');
+                document.getElementById('step-2').classList.add('active');
+            } catch (err) {
+                document.getElementById('error-msg').innerText = err.message;
+            }
+        }
+
+        async function verifyTenant() {
+            document.getElementById('error-msg').innerText = '';
+            const role_arn = document.getElementById('role_arn').value;
+            
+            try {
+                const res = await fetch(`${API_URL}/tenants/${currentTenantId}/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role_arn })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.error || data.error || 'Verification failed');
+                
+                document.getElementById('step-2').classList.remove('active');
+                document.getElementById('step-3').classList.add('active');
+            } catch (err) {
+                document.getElementById('error-msg').innerText = err.message;
+            }
+        }
+    </script>
+</body>
+</html>

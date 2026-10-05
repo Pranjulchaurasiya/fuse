@@ -11,22 +11,6 @@
 </head>
 <body>
   <div class="app-layout">
-    <!-- Hackathon Context Banner (WeMakeDevs x AWS First Commit) -->
-    <div class="hackathon-ribbon">
-      <div class="ribbon-inner">
-        <div class="ribbon-left">
-          <span class="ribbon-tag">FIRST COMMIT</span>
-          <span class="ribbon-text">Bharat Builds Tour 2026 &bull; WeMakeDevs &times; AWS</span>
-          <span class="ribbon-track">Ship It Track Submission</span>
-        </div>
-        <div class="ribbon-right">
-          <a href="https://www.wemakedevs.org/aws/first-commit" target="_blank" rel="noopener" class="ribbon-link">Event Portal &rarr;</a>
-          <span class="ribbon-sep">&bull;</span>
-          <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener" class="ribbon-link">GitHub Source</a>
-        </div>
-      </div>
-    </div>
-
     <!-- Top Navigation Header -->
     <header class="top-nav">
       <div class="nav-inner">
@@ -44,20 +28,21 @@
             <span class="pulse-dot"></span>
             <div class="account-meta">
               <span class="account-name">aws-prod-ap-south-1</span>
-              <span class="account-sub">acct-515903395012 // LIVE ENFORCEMENT</span>
+              <span class="account-sub">acct-123456789012 // LIVE ENFORCEMENT</span>
             </div>
           </div>
         </div>
 
         <!-- Telemetry Stats & Actions -->
         <div class="nav-right">
+          <a href="onboarding.html" class="ribbon-link" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px; text-decoration: none; color: var(--text-primary); font-weight: 600;">+ Onboard AWS Account</a>
           <div class="micro-stat">
-            <span class="stat-lbl">POLL CADENCE</span>
-            <span class="stat-val">1-min EB</span>
+            <span class="stat-lbl">REMEDIATION</span>
+            <span class="stat-val text-crimson">WAF IP Isolation</span>
           </div>
           <div class="micro-stat">
             <span class="stat-lbl">SENTINEL ENGINE</span>
-            <span class="stat-val text-blue">Bedrock Haiku</span>
+            <span class="stat-val text-blue">Bedrock Nova Micro</span>
           </div>
           <button id="refresh-btn" class="btn btn-sync">
             <svg class="icon-sync" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,108 +58,47 @@
 
     <!-- Main Content Canvas -->
     <main class="content-canvas">
-      <!-- 01 / Architectural Overview Hero Banner -->
-      <section class="hero-bento">
-        <div class="section-badge-row">
-          <span class="section-mono-tag">01 / ARCHITECTURAL SENTINEL</span>
-          <span class="section-sub-tag">Ship It Track Submission &bull; Real AWS Deployment</span>
-        </div>
-        <div class="hero-bento-grid">
-          <!-- Left Architectural Summary -->
-          <div class="hero-left">
-            <div class="active-guard-pill">
-              <span class="ping-dot"></span>
-              <span>Active Sentinel: Amazon Bedrock Converse (Claude 3.5 Haiku)</span>
-            </div>
-            <h1 class="hero-heading">Fuse stops runaway cloud costs before they multiply.</h1>
-            <p class="hero-summary">
-              A context-aware circuit breaker for serverless AWS APIs. Built for <strong>First Commit (Bharat Builds Tour)</strong>, Fuse analyzes multi-dimensional traffic signals, caller diversity, and deployment heartbeats to distinguish legitimate flash traffic from recursive agent loops without inline proxy latency.
-            </p>
-            <div class="hero-specs-row">
-              <div class="spec-card tilt-3d">
-                <span class="spec-label">Inspection Cadence</span>
-                <span class="spec-val">1-Minute</span>
-                <span class="spec-sub">EventBridge Rate Rule</span>
-              </div>
-              <div class="spec-card tilt-3d">
-                <span class="spec-label">Remediation Target</span>
-                <span class="spec-val text-blue">RateLimit &rarr; 0</span>
-                <span class="spec-sub">API Gateway Stage Level</span>
-              </div>
-              <div class="spec-card tilt-3d">
-                <span class="spec-label">Telemetry Pipeline</span>
-                <span class="spec-val text-green">Decoupled</span>
-                <span class="spec-sub">Zero Inline Proxy Overhead</span>
-              </div>
-            </div>
+      <!-- Unified Top Command Strip: Sentinel Summary + Telemetry Bento -->
+      <section class="top-command-strip">
+        <div class="command-summary-tile tilt-3d">
+          <div class="active-guard-pill">
+            <span class="ping-dot"></span>
+            <span>Amazon Bedrock Converse (Nova Micro)</span>
           </div>
-
-          <!-- Right 3D Architectural Visual -->
-          <div class="hero-right">
-            <div class="visual-wrapper">
-              <img src="assets/fuse_hero_3d.jpg" alt="Fuse 3D Circuit Breaker Shield" class="hero-3d-visual" />
-              <div class="visual-tag">
-                <span class="visual-dot"></span>
-                <span>FUSE-CIRCUIT-ISOLATOR: ARMED</span>
-              </div>
-            </div>
+          <h1 class="hero-heading-compact">Fuse stops runaway AWS costs before they multiply.</h1>
+          <p class="hero-summary-compact">
+            Context-aware circuit breaker &amp; surgical WAF isolator for serverless APIs. Decoupled 1-min EventBridge polling with zero proxy latency.
+          </p>
+          <div class="compact-spec-pills">
+            <span class="compact-pill"><strong>CADENCE:</strong> 1-Min EB</span>
+            <span class="compact-pill text-crimson"><strong>ACTION:</strong> WAF IP Block</span>
+            <span class="compact-pill text-green"><strong>RECOVERY:</strong> 15-Min Cooldown</span>
           </div>
         </div>
-      </section>
 
-      <!-- 02 / Real-Time Fleet Telemetry Bento Scorecard -->
-      <section class="metrics-container-section reveal-on-scroll">
-        <div class="section-badge-row">
-          <span class="section-mono-tag">02 / FLEET TELEMETRY SCORECARD</span>
-          <span class="section-sub-tag">Computed Honestly From Live DynamoDB Records</span>
-        </div>
-        <div class="metrics-grid">
-          <div class="bento-tile tilt-3d">
-            <div class="tile-header">
-              <span class="tile-title">Evaluations Monitored</span>
-              <span class="tile-chip">EventBridge</span>
-            </div>
-            <div class="tile-value" id="metric-total">0</div>
-            <div class="tile-footer">
-              <span>1-min CloudWatch polling cycles</span>
-              <span class="text-blue">100% In-Budget</span>
-            </div>
+        <div class="metrics-grid-compact">
+          <div class="bento-tile-compact tilt-3d">
+            <span class="tile-compact-label">Evaluations</span>
+            <div class="tile-compact-val" id="metric-total">0</div>
+            <span class="tile-compact-sub text-blue">1-min EB Cycles</span>
           </div>
 
-          <div class="bento-tile tilt-3d">
-            <div class="tile-header">
-              <span class="tile-title">Runaways Caught</span>
-              <span class="tile-chip chip-red">Bedrock Sentinel</span>
-            </div>
-            <div class="tile-value" id="metric-runaways">0</div>
-            <div class="tile-footer">
-              <span>Single-caller recursive loops caught</span>
-              <span class="text-green">Contained</span>
-            </div>
+          <div class="bento-tile-compact tilt-3d">
+            <span class="tile-compact-label">Runaways Caught</span>
+            <div class="tile-compact-val" id="metric-runaways">0</div>
+            <span class="tile-compact-sub text-green">Contained</span>
           </div>
 
-          <div class="bento-tile tilt-3d" id="tile-pending">
-            <div class="tile-header">
-              <span class="tile-title">Pending Approvals</span>
-              <span class="tile-chip chip-amber">Prod Safety Gate</span>
-            </div>
-            <div class="tile-value" id="metric-pending">0</div>
-            <div class="tile-footer">
-              <span>Withheld from automated throttling</span>
-              <span class="text-amber">Human Operator</span>
-            </div>
+          <div class="bento-tile-compact tilt-3d" id="tile-pending">
+            <span class="tile-compact-label">Pending Review</span>
+            <div class="tile-compact-val" id="metric-pending">0</div>
+            <span class="tile-compact-sub text-amber">Prod Safety Gate</span>
           </div>
 
-          <div class="bento-tile tilt-3d">
-            <div class="tile-header">
-              <span class="tile-title">Stages Throttled</span>
-              <span class="tile-chip chip-crimson">Remediated</span>
-            </div>
-            <div class="tile-value" id="metric-throttled">0</div>
-            <div class="tile-footer">
-              <span>RateLimit &amp; BurstLimit set to 0</span>
-              <span class="text-crimson">429 Active</span>
-            </div>
+          <div class="bento-tile-compact tilt-3d">
+            <span class="tile-compact-label">Blocked in WAF</span>
+            <div class="tile-compact-val" id="metric-throttled">0</div>
+            <span class="tile-compact-sub text-crimson">HTTP 403 Dropped</span>
           </div>
         </div>
       </section>
@@ -253,23 +177,23 @@
                 </div>
                 <div class="policy-item">
                   <span class="policy-key">Runaway Detection</span>
-                  <span class="policy-val">Single-Caller &gt; 90% Traffic</span>
+                  <span class="policy-val">Single-Caller &gt; 85% Traffic</span>
                 </div>
                 <div class="policy-item">
                   <span class="policy-key">Deploy Heartbeats</span>
-                  <span class="policy-val">DynamoDB Deployments (T-20m)</span>
-                </div>
-                <div class="policy-item">
-                  <span class="policy-key">Dev / Staging Gate</span>
-                  <span class="policy-val text-green">Auto-Throttle (Direct Remediation)</span>
-                </div>
-                <div class="policy-item">
-                  <span class="policy-key">Production Gate</span>
-                  <span class="policy-val text-amber">ApprovalQueue Human Review</span>
+                  <span class="policy-val">DynamoDB Deployments (T-15m)</span>
                 </div>
                 <div class="policy-item">
                   <span class="policy-key">Remediation Action</span>
-                  <span class="policy-val text-blue">RateLimit: 0, BurstLimit: 0</span>
+                  <span class="policy-val text-crimson">Surgical AWS WAFv2 IP Block</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Auto-Recovery</span>
+                  <span class="policy-val text-green">15-Minute Cooldown Unblock</span>
+                </div>
+                <div class="policy-item">
+                  <span class="policy-key">Fast Defense Layer</span>
+                  <span class="policy-val text-blue">WAF Rate-Based Flood Cap (500)</span>
                 </div>
               </div>
             </div>
@@ -290,13 +214,15 @@
         </div>
       </section>
 
-      <!-- 04 / Hackathon Judging Walkthrough Guide -->
-      <section class="walkthrough-guide-section reveal-on-scroll">
-        <div class="section-badge-row">
-          <span class="section-mono-tag">04 / JUDGING CRITERIA &amp; ARCHITECTURE PROOF</span>
-          <span class="section-sub-tag">First Commit (Bharat Builds Tour) Evaluation Guide</span>
-        </div>
-        <div class="guide-cards-grid">
+      <!-- 04 / Hackathon Judging Walkthrough Guide (Collapsible Drawer) -->
+      <details class="walkthrough-guide-details">
+        <summary class="walkthrough-summary">
+          <div class="section-badge-row" style="margin: 0; cursor: pointer;">
+            <span class="section-mono-tag">04 / JUDGING CRITERIA &amp; ARCHITECTURE PROOF</span>
+            <span class="section-sub-tag">Click to expand evaluation guide &darr;</span>
+          </div>
+        </summary>
+        <div class="guide-cards-grid" style="margin-top: 14px;">
           <div class="guide-card tilt-3d">
             <span class="guide-num">01</span>
             <h4 class="guide-title">The Real Problem</h4>
@@ -329,18 +255,16 @@
             </p>
           </div>
         </div>
-      </section>
+      </details>
     </main>
 
     <!-- Global Footer -->
     <footer class="bottom-footer">
       <div class="footer-inner">
         <div class="footer-brand-info">
-          <strong>FUSE</strong> &bull; AWS Cost Guardrail &bull; Built for <strong>First Commit | Bharat Builds Tour</strong> &bull; WeMakeDevs &times; AWS &bull; Pranjul Chaurasiya
+          <strong>FUSE</strong> &bull; AWS Autonomous FinOps Guardrail &bull; Built by Pranjul Chaurasiya
         </div>
         <div class="footer-links">
-          <a href="https://www.wemakedevs.org/aws/first-commit" target="_blank" rel="noopener">WeMakeDevs First Commit</a>
-          <span>&bull;</span>
           <a href="https://github.com/Pranjulchaurasiya/fuse" target="_blank" rel="noopener">GitHub Repository</a>
           <span>&bull;</span>
           <span>Amazon Bedrock</span>
@@ -351,6 +275,8 @@
     </footer>
   </div>
 
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

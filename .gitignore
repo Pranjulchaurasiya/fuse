@@ -81,4 +81,24 @@ recordings/
 videos/
 demo/
 raw_takes/
+# Temporary video & audio build scratch folders
+scratch_*/
+audio_test_options/
+fuse-hyperframe-ad/
+example-product-promo/
+test-hyperframe/
 graphify-out/
+node_modules/
+
+# SAM build artifacts
+.aws-sam/
+
+# Frontend local configuration
+frontend/config.js
+config.js
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl

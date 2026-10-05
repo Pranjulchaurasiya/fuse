@@ -103,14 +103,15 @@
 
 ### ACT 4: Under the Hood (2:15 – 2:45)
 
-**[Screen]**: Show [ARCHITECTURE.md](file:///c:/Users/pranj/Documents/Fuse/ARCHITECTURE.md) diagram or GitHub repository.
+**[Screen]**: Show [ARCHITECTURE.md](../ARCHITECTURE.md) diagram or GitHub repository.
 
 **[Voiceover]**:
 > "Here's what makes Fuse production-grade:
 > 
 > 1. **Isolated Control Plane**: The dashboard and approval endpoints run on a completely separate API Gateway. Throttling the demo workload never locks the operator out of the control room.
 > 2. **Single-Turn Structured Bedrock**: We invoke Bedrock Converse exactly once per cycle using toolConfig, enforcing typed JSON without expensive multi-turn loops.
-> 3. **Fail-Closed Cost Safety**: If Bedrock ever times out, our reasoner safely defaults to RUNAWAY—guaranteeing cost protection is never compromised."
+> 3. **Fail-Closed Cost Safety**: If Bedrock ever times out, our reasoner safely defaults to RUNAWAY—guaranteeing cost protection is never compromised.
+> 4. **AWS SAM Infrastructure as Code**: Provisioned declaratively via AWS SAM (template.yaml) with isolated state tables and zero manual click-ops."
 
 ---
 

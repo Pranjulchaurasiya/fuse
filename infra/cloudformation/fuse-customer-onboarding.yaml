@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Fuse Cognitive Circuit Breaker - Customer Account Onboarding Role.
+  Grants the central Fuse SaaS platform least-privilege, cross-account access
+  to inspect CloudWatch metrics and apply API Gateway stage rate-limiting.
+  Protected against Confused Deputy attacks via mandatory sts:ExternalId verification.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Fuse SaaS Platform Configuration"
+        Parameters:
+          - FuseCentralAccountId
+          - FuseTenantExternalId
+      - Label:
+          default: "Role Configuration"
+        Parameters:
+          - CrossAccountRoleName
+
+Parameters:
+  FuseCentralAccountId:
+    Type: String
+    Default: "111122223333"
+    AllowedPattern: '^\d{12}$'
+    Description: "The 12-digit AWS Account ID of the central Fuse SaaS Control Plane."
+
+  FuseTenantExternalId:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    MaxLength: 128
+    Description: "The unique cryptographic External ID generated for your workspace inside the Fuse console."
+
+  CrossAccountRoleName:
+    Type: String
+    Default: "FuseCrossAccountAgentRole"
+    Description: "The name of the IAM role to create in your account."
+
+Resources:
+  FuseCrossAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref CrossAccountRoleName
+      Description: "Allows Fuse SaaS Control Plane to monitor metrics and apply emergency stage throttling."
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${FuseCentralAccountId}:root"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref FuseTenantExternalId
+      Policies:
+        - PolicyName: FuseApiGatewayThrottlingPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowApiGatewayStageInspectionAndThrottling
+                Effect: Allow
+                Action:
+                  - apigateway:GET
+                  - apigateway:PATCH
+                  - apigateway:PUT
+                Resource:
+                  - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis"
+                  - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*"
+                  - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages"
+                  - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages/*"
+              - Sid: AllowCloudWatchMetricInspection
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:ListMetrics
+                Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: "ARN of the cross-account role created for Fuse SaaS. Paste this into your Fuse Dashboard."
+    Value: !GetAtt FuseCrossAccountRole.Arn
+    Export:
+      Name: FuseCrossAccountRoleArn

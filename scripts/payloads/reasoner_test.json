@@ -1,0 +1,16 @@
+{
+  "resource": "guardrail-demo-api",
+  "stage": "prod",
+  "current_count_per_min": 650,
+  "baseline_count_per_min": 12.0,
+  "delta": 638.0,
+  "unique_caller_count": 1,
+  "total_requests_in_window": 1950,
+  "recent_deploy": false,
+  "deploy_note": null,
+  "sample_payloads": [
+    "{\"action\":\"retry_fetch\",\"id\":\"x92\"}",
+    "{\"action\":\"retry_fetch\",\"id\":\"x92\"}",
+    "{\"action\":\"retry_fetch\",\"id\":\"x92\"}"
+  ]
+}

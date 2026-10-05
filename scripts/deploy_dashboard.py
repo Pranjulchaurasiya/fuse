@@ -13,7 +13,7 @@ REGION_NAME = os.environ.get("AWS_REGION", "ap-south-1")
 try:
     ACCOUNT_ID = boto3.client("sts", region_name=REGION_NAME).get_caller_identity()["Account"]
 except Exception:
-    ACCOUNT_ID = "515903395012"
+    ACCOUNT_ID = "123456789012"
 if os.environ.get("DASHBOARD_BUCKET_NAME"):
     BUCKET_NAME = os.environ["DASHBOARD_BUCKET_NAME"]
 elif REGION_NAME == "ap-south-1":
@@ -86,6 +86,8 @@ def upload_files():
         ("app.js", "application/javascript"),
         ("assets/fuse_hero_3d.jpg", "image/jpeg"),
     ]
+    if os.path.exists(os.path.join(FRONTEND_DIR, "config.js")):
+        files_to_upload.append(("config.js", "application/javascript"))
 
     for fname, ctype in files_to_upload:
         fpath = os.path.join(FRONTEND_DIR, fname)

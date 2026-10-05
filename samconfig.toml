@@ -1,0 +1,39 @@
+# samconfig.toml - AWS SAM CLI configuration for Fuse
+
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "fuse-sam"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "ap-south-1"
+stack_name = "fuse-sam"
+parameter_overrides = [
+  "Environment=\"production\"",
+  "TargetApiId=\"poim5xmgs2\"",
+  "TargetApiName=\"guardrail-demo-api\"",
+  "TargetStage=\"prod\"",
+  "MinimumVolumeFloor=50",
+  "ZScoreThreshold=2.5",
+  "BedrockModelId=\"apac.amazon.nova-micro-v1:0\"",
+  "WindowMinutes=15",
+  "AllowedOrigin=\"https://main.d1hndpgpwb40h8.amplifyapp.com\"",
+  "TargetLambdaLogGroup=\"/aws/lambda/guardrail-demo-target\""
+]
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.sync.parameters]
+watch = true

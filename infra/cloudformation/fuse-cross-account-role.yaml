@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Fuse Cost Guardrail — Cross-Account Access Role.
+  Deploy this once in your AWS account to connect Fuse.
+  Fuse will use this role to read your CloudWatch metrics
+  and write WAFv2 IP blocks. No credentials are shared.
+
+Parameters:
+  FuseExternalId:
+    Type: String
+    Description: Unique External ID provided by Fuse during onboarding. Do not share this.
+
+  CustomerApiGatewayId:
+    Type: String
+    Description: The REST API ID of the API Gateway you want Fuse to protect.
+
+  CustomerApiStage:
+    Type: String
+    Default: prod
+    Description: The stage name (e.g. prod, staging).
+
+Resources:
+  FuseAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: fuse-guardrail-access
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::515903395012:root
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref FuseExternalId
+      Policies:
+        - PolicyName: fuse-read-cloudwatch
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CloudWatchReadMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                Resource: '*'
+              - Sid: CloudWatchLogsRead
+                Effect: Allow
+                Action:
+                  - logs:FilterLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Sid: WAFv2BlockIPs
+                Effect: Allow
+                Action:
+                  - wafv2:GetIPSet
+                  - wafv2:UpdateIPSet
+                  - wafv2:ListIPSets
+                  - wafv2:CreateIPSet
+                  - wafv2:AssociateWebACL
+                  - wafv2:CreateWebACL
+                  - wafv2:ListWebACLs
+                Resource: '*'
+              - Sid: APIGatewayRead
+                Effect: Allow
+                Action:
+                  - apigateway:GET
+                Resource: '*'
+
+Outputs:
+  FuseRoleArn:
+    Description: Copy this ARN and paste it into Fuse onboarding to complete setup.
+    Value: !GetAtt FuseAccessRole.Arn
+  ExternalId:
+    Description: Your External ID (already set — do not change).
+    Value: !Ref FuseExternalId

@@ -431,51 +431,159 @@ body {
 .content-canvas {
   max-width: 1360px;
   width: 100%;
-  margin: 24px auto;
-  padding: 0 24px;
+  margin: 14px auto;
+  padding: 0 20px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 16px;
 }
 
 .section-badge-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .section-mono-tag {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
 }
 
 .section-sub-tag {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 /* ==========================================================================
-   01 / Hero Architectural Bento Banner
+   Unified Top Command Strip & Compact Telemetry
    ========================================================================== */
-.hero-bento {
+.top-command-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 960px) {
+  .top-command-strip {
+    grid-template-columns: 46% 54%;
+  }
+}
+
+.command-summary-tile {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   box-shadow: var(--shadow-sm);
-  padding: 24px;
-  overflow: hidden;
 }
 
-.hero-bento-grid {
+.hero-heading-compact {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.hero-summary-compact {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.compact-spec-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.compact-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.metrics-grid-compact {
   display: grid;
-  grid-template-columns: 1fr;
-  align-items: center;
-  gap: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 580px) {
+  .metrics-grid-compact {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.bento-tile-compact {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.bento-tile-compact:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.tile-compact-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tile-compact-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin: 4px 0;
+}
+
+.tile-compact-sub {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.walkthrough-guide-details {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.walkthrough-summary {
+  list-style: none;
+}
+
+.walkthrough-summary::-webkit-details-marker {
+  display: none;
 }
 
 @media (min-width: 980px) {
@@ -487,33 +595,33 @@ body {
 .hero-left {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .active-guard-pill {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: var(--bg-subtle);
   border: 1px solid var(--border-light);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 20px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--brand-primary);
 }
 
 .ping-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: var(--state-success);
 }
 
 .hero-heading {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.025em;
   color: var(--text-primary);
@@ -521,17 +629,17 @@ body {
 }
 
 .hero-summary {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.5;
   max-width: 720px;
 }
 
 .hero-specs-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-  padding-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding-top: 10px;
   border-top: 1px dashed var(--border-dashed);
 }
 
@@ -581,12 +689,12 @@ body {
 
 .visual-wrapper {
   width: 100%;
-  max-width: 380px;
+  max-width: 280px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 12px 30px -6px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+  padding: 6px;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s ease;
@@ -769,15 +877,19 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-height: 580px;
 }
 
 .panel-header {
-  padding: 14px 20px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .panel-title-group {
@@ -813,11 +925,13 @@ body {
 }
 
 .incidents-feed {
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* Incident Card */
@@ -1137,7 +1251,10 @@ body {
 .side-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+  max-height: 580px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .side-tile {
@@ -1145,10 +1262,10 @@ body {
   border: 1px solid var(--border-light);
   border-radius: 8px;
   box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   transition: transform 0.22s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.22s ease;
 }
 
@@ -1369,46 +1486,46 @@ body {
 
 .guide-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
 .guide-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 20px;
+  padding: 14px 16px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   transition: transform 0.24s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.24s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.24s ease;
 }
 
 .guide-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -4px rgba(15, 23, 42, 0.08);
   border-color: var(--border-strong);
 }
 
 .guide-num {
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--brand-primary);
   line-height: 1;
 }
 
 .guide-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .guide-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .guide-desc code {
@@ -1423,10 +1540,10 @@ body {
 
 /* Footer */
 .bottom-footer {
-  margin-top: 40px;
+  margin-top: 20px;
   border-top: 1px solid var(--border-light);
   background-color: var(--bg-surface);
-  padding: 20px 0;
+  padding: 14px 0;
 }
 
 .footer-inner {
