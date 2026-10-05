@@ -214,12 +214,12 @@
         </div>
       </section>
 
-      <!-- 04 / Hackathon Judging Walkthrough Guide (Collapsible Drawer) -->
+      <!-- 04 / How Fuse Works (Collapsible System Guide) -->
       <details class="walkthrough-guide-details">
         <summary class="walkthrough-summary">
           <div class="section-badge-row" style="margin: 0; cursor: pointer;">
-            <span class="section-mono-tag">04 / JUDGING CRITERIA &amp; ARCHITECTURE PROOF</span>
-            <span class="section-sub-tag">Click to expand evaluation guide &darr;</span>
+            <span class="section-mono-tag">04 / HOW FUSE WORKS &bull; SYSTEM ARCHITECTURE</span>
+            <span class="section-sub-tag">Click to expand architecture guide &darr;</span>
           </div>
         </summary>
         <div class="guide-cards-grid" style="margin-top: 14px;">
@@ -233,7 +233,7 @@
 
           <div class="guide-card tilt-3d">
             <span class="guide-num">02</span>
-            <h4 class="guide-title">Single-Turn Bedrock Sentinel</h4>
+            <h4 class="guide-title">Bedrock Sentinel Synthesis</h4>
             <p class="guide-desc">
               Rather than brittle static thresholds that block legitimate flash sales, Fuse invokes Amazon Bedrock via the Converse API with <code>toolConfig</code>. It correlates caller diversity with deployment heartbeats to classify anomalies with high confidence.
             </p>
@@ -241,9 +241,9 @@
 
           <div class="guide-card tilt-3d">
             <span class="guide-num">03</span>
-            <h4 class="guide-title">Production Safety Gate</h4>
+            <h4 class="guide-title">Surgical WAF Isolation</h4>
             <p class="guide-desc">
-              While dev/staging environments are throttled automatically, production traffic never auto-throttles blindly. Runaway anomalies are safely withheld in DynamoDB <code>ApprovalQueue</code> until confirmed with a single click.
+              Rather than shutting down the entire API and punishing paying customers, Fuse injects the specific runaway caller IP into AWS WAFv2 IP Sets. Malfunctioning clients get HTTP 403 while legitimate traffic keeps flowing.
             </p>
           </div>
 
