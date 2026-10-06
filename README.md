@@ -126,10 +126,16 @@ To ensure sub-second response times and eliminate hallucination risk on fast pat
 * **Detection & Remediation**: Run purely deterministically in Python via Z-scores, standard deviations, and caller dominance metrics.
 * **Amazon Bedrock (Nova Micro)**: Invoked asynchronously for non-blocking contextual narrative summaries and audit logs without impeding remediation latency.
 
-### 5. Operator Session Lock Screen
+### 5. Real-Time Channel Alerting (Slack & Discord)
+Circuit breaker trips and unblock recovery events dispatch formatted webhook alerts in sub-second time:
+* **Rich Embeds**: Posts target IP addresses (`/32`), API resources, incident IDs, and measured anomaly rationale (*"Dominant runaway caller 203.0.113.42 drove 96/100 requests (96.0%)"*).
+* **Multi-Tenant Routing**: Customers configure their own incoming webhook URL during onboarding, allowing incident notifications to post directly into their organization's internal `#devops` or `#alerts` channels.
+* **Non-Blocking Delivery**: Webhook dispatch is asynchronous with strict 3-second timeouts, guaranteeing zero disruption to the primary WAF mitigation path.
+
+### 6. Operator Session Lock Screen
 The dashboard console features a client-side operator session gate (`auth.js`), preventing unauthorized viewing of incident logs while keeping setup completely serverless.
 
-### 6. Layered Defense-in-Depth (Native WAF + Bedrock Poller)
+### 7. Layered Defense-in-Depth (Native WAF + Bedrock Poller)
 Fuse uses a two-tier strategy to eliminate detection lag:
 * **Tier 1 (Instant Edge Flood Cap)**: Native AWS WAF Rate-Based Rule (`fuse-emergency-burst-cap`) drops violent floods (>500 reqs/5min per IP) at the regional edge within seconds.
 * **Tier 2 (Cognitive Poller + Bedrock Sentinel)**: Inspects subtle, low-frequency runaway retry loops (90 reqs/min) that bypass static rate rules over a 15-minute statistical window and orchestrates automated self-healing.
@@ -264,11 +270,14 @@ Fuse implements the **Model Context Protocol (MCP)** using `FastMCP`, allowing A
 {
   "mcpServers": {
     "fuse": {
-      "command": "python",
-      "args": ["c:/Users/pranj/Documents/Fuse/mcp_server.py"]
+      "command": "fuse-mcp"
     }
   }
 }
+```
+Or run directly via python:
+```bash
+python mcp_server.py
 ```
 
 ---
