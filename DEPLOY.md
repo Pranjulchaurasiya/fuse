@@ -64,6 +64,80 @@ If you prefer to inspect, customize, or execute individual steps manually, follo
 8. **Deploy heartbeat wiring** — add the `deploy_heartbeat.py` call as the
    last line of whatever counts as your "deploy" step for the demo API
 
+### WAF Web ACL Stage Association (Setup-Only Operation)
+Associating the WAF Web ACL (`fuse-guardrail-acl`) with an API Gateway stage (which requires `wafv2:AssociateWebACL` and `apigateway:SetWebACL`) is performed **once during initial onboarding setup** (via `scripts/setup_waf.py`, AWS CLI, or the AWS WAF Console). 
+
+> [!NOTE]
+> **Cross-Account Customer Accounts:**
+> The customer CloudFormation template (`infra/cloudformation/fuse-cross-account-role.yaml`) provisions the least-privilege IAM role for Fuse. It **does not create or associate** the customer's WAF Web ACL. If the customer does not already have a WAF Web ACL protecting their API, they must run these AWS CLI commands in their account:
+> ```bash
+> # 1. Create IP Set for blocked IPs
+> aws wafv2 create-ip-set \
+>   --name fuse-blocked-ips \
+>   --scope REGIONAL \
+>   --ip-address-version IPV4 \
+>   --addresses '[]' \
+>   --description "Fuse Guardrail: Blocked runaway caller IPs"
+> 
+> # 2. Create Web ACL with rule referencing fuse-blocked-ips
+> aws wafv2 create-web-acl \
+>   --name fuse-guardrail-acl \
+>   --scope REGIONAL \
+>   --default-action Allow={} \
+>   --visibility-config SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=fuse-guardrail-acl \
+>   --rules '[{"Name":"fuse-block-runaway-ips","Priority":0,"Statement":{"IPSetReferenceStatement":{"ARN":"arn:aws:wafv2:<REGION>:<ACCOUNT_ID>:regional/ipset/fuse-blocked-ips/<IPSET_ID>"}},"Action":{"Block":{}},"VisibilityConfig":{"SampledRequestsEnabled":true,"CloudWatchMetricsEnabled":true,"MetricName":"fuse-blocked-ips"}}]'
+> 
+> # 3. Associate Web ACL to the API Gateway Stage
+> aws wafv2 associate-web-acl \
+>   --web-acl-arn <WEB_ACL_ARN> \
+>   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
+> 
+> # 4. Verify Association
+> aws wafv2 get-web-acl-for-resource \
+>   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
+> ```
+
+At runtime, Fuse never modifies or disassociates stage attachments; the Remediator Lambda operates with surgical least privilege, performing mutations strictly on the WAF IPSet (`wafv2:GetIPSet` and `wafv2:UpdateIPSet`). Neither the runtime cross-account IAM role nor the central SAM stack requires `apigateway:SetWebACL` or runtime `wafv2:AssociateWebACL` permissions.
+
+## AWS Amplify Hosting Deployment & Environment Variables
+
+Fuse supports two deployment paths to AWS Amplify Hosting:
+
+### Path A: Manual API Deployment (`scripts/deploy_amplify.py`)
+When deploying directly from your local terminal or CLI without linking GitHub branches:
+1. Export the control plane environment variables:
+   ```bash
+   export CONTROL_API_BASE="https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod"
+   export API_KEY="<your-control-api-key>"
+   export TARGET_API_URL="https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items"
+   export OPERATOR_PASSWORD="<your-operator-password>"
+   ```
+2. (Optional) Run local packaging & verification with `--dry-run` (zero AWS calls):
+   ```bash
+   python scripts/deploy_amplify.py --dry-run
+   ```
+3. Run live deployment to the existing Amplify app (`fuse-console` / `d1hndpgpwb40h8`):
+   ```bash
+   python scripts/deploy_amplify.py
+   ```
+`deploy_amplify.py` generates a temporary `frontend/config.js` via `scripts/generate_config.js`, bundles `frontend/` into a sanitized ZIP archive (excluding `.git`, `.env*`, and `node_modules`), uploads it to the existing live app (`d1hndpgpwb40h8`), starts the deployment job, and cleans up the local `config.js`. It never creates duplicate Amplify apps or alters the live URL (`https://main.d1hndpgpwb40h8.amplifyapp.com`).
+
+### Path B: Git-Connected Continuous Deployment (`amplify.yml`)
+When linking your GitHub repository to AWS Amplify Hosting in the AWS Console:
+- Amplify executes the build steps in [`amplify.yml`](amplify.yml) which runs `node scripts/generate_config.js`.
+- Configure the environment variables in **AWS Amplify Console > App settings > Environment variables**:
+
+| Variable | Description | Example / Source |
+|---|---|---|
+| `CONTROL_API_BASE` | Base URL of the deployed Fuse Control Plane API | `https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod` (from SAM Output `ControlApiUrl`) |
+| `API_KEY` | API Key for authenticating Control API requests (`x-api-key`) | Fetch with: `aws apigateway get-api-key --api-key <KeyId> --include-value` |
+| `TARGET_API_URL` | Monitored target API endpoint for live circuit status probes | `https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items` |
+| `OPERATOR_PASSWORD` | Password required to unlock the demo operator dashboard | Secret password string chosen by operator |
+
+> [!WARNING]
+> **Client-Side Auth Security Notice:**
+> `OPERATOR_PASSWORD` embedded in `frontend/config.js` is delivered to the browser runtime. While it prevents casual unauthorized viewing of the console during hackathon demonstrations, it is **not a cryptographic security boundary** (any browser user inspecting network responses or client memory can see it). In production multi-tenant environments, enforce authentication at the API Gateway layer using Amazon Cognito User Pools (JWT authorizer) or AWS IAM SigV4.
+
 ## Environment variables (per Lambda)
 | Lambda | Env vars |
 |---|---|

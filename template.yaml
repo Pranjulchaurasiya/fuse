@@ -21,6 +21,7 @@ Parameters:
 
   TargetApiId:
     Type: String
+    Default: poim5xmgs2
     Description: Target Amazon API Gateway REST API ID monitored and throttled by Fuse.
 
   TargetApiName:
@@ -218,9 +219,8 @@ Resources:
                 - apigateway:PUT
               Resource:
                 - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages/*"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}/*"
             - Sid: IncidentsUpdateAccess
               Effect: Allow
               Action:
@@ -233,9 +233,13 @@ Resources:
               Action:
                 - wafv2:GetIPSet
                 - wafv2:UpdateIPSet
-                - wafv2:ListIPSets
               Resource:
                 - !Sub "arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/${WafIpSetName}/*"
+            - Sid: WAFListOperations
+              Effect: Allow
+              Action:
+                - wafv2:ListIPSets
+              Resource: "*"
 
   ReasonerFunction:
     Type: AWS::Serverless::Function

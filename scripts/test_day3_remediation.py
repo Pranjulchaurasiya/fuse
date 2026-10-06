@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""test_day3_remediation.py — Full live test of Day 3 remediation & approval pipeline.
+"""[LEGACY] test_day3_remediation.py — Test of Day 3 stage throttle & approval pipeline.
 
-Executes and verifies:
+NOTE: This script is preserved for historical Day 3 reference. The active Fuse circuit breaker
+architecture uses WAF IPSet surgical blocking (/32 blocks with HTTP 403 and auto-recovery),
+tested via scripts/test_remediator.py and scripts/test_prefilter_gate.py.
+
+Executes and verifies (Legacy flow):
 1. Triggers Reasoner with a RUNAWAY loop scenario in 'prod' stage.
 2. Confirms 'prod' path correctly WITHHOLDS action:
    - Sets action_taken: 'PENDING_APPROVAL'

@@ -1,20 +1,52 @@
 /**
  * auth.js — Fuse Operator & Multi-Tenant Auth Gate
  * 
- * Supports two authentication paths:
+ * SECURITY NOTICE:
+ * Client-side gating (localStorage session or password check) is an interface gate
+ * for developer demos and visual evaluation only. It is NOT a cryptographic security boundary.
+ * Production SaaS deployments must authenticate requests at the API Gateway layer via
+ * Amazon Cognito User Pools (JWT authorizer) or AWS IAM SigV4 authorization.
+ * 
+ * Supported authentication paths:
  * 1. Production Mode: Supabase Auth (Magic Link & Email/Password) if SUPABASE_URL is configured.
- * 2. Standalone Demo Mode: Operator password session gate with localStorage token fallback.
+ * 2. Enterprise Mode: Amazon Cognito User Pools / OIDC JWT Authorizer (interface stubbed below).
+ * 3. Standalone Demo Mode: Operator password session gate with localStorage token fallback.
  */
 
 (function () {
   const cfg = (typeof FUSE_CONFIG !== 'undefined') ? FUSE_CONFIG : {};
   const SUPABASE_URL = cfg.SUPABASE_URL || '';
   const SUPABASE_ANON_KEY = cfg.SUPABASE_ANON_KEY || '';
-  const PASSWORD = cfg.OPERATOR_PASSWORD || 'fuse-operator-2024';
+  const PASSWORD = cfg.OPERATOR_PASSWORD || '';
   const TOKEN_KEY = 'fuse_auth_token';
   const SESSION_HOURS = 8;
 
   let supabaseClient = null;
+
+  /**
+   * Enterprise Architecture Interface: Cognito / JWT Auth Provider
+   * Ready for integration with AWS Amplify or amazon-cognito-identity-js.
+   */
+  const cognitoAuthStub = {
+    // TODO: Wire to amazon-cognito-identity-js or AWS Amplify Auth when Cognito User Pool is provisioned.
+    async isAuthenticated() {
+      return false;
+    },
+    async getAccessToken() {
+      // Return JWT Bearer token for Authorization: Bearer <token>
+      return null;
+    },
+    async getIdToken() {
+      return null;
+    },
+    async signIn(username, password) {
+      console.warn('[Fuse Auth] Cognito provider stub called. Configure COGNITO_USER_POOL_ID to activate.');
+      return { status: 'COGNITO_NOT_CONFIGURED' };
+    },
+    async signOut() {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  };
 
   // Initialize Supabase if SDK is available and credentials provided
   if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof window.supabase !== 'undefined') {
@@ -26,6 +58,7 @@
       const { data: { session } } = await supabaseClient.auth.getSession();
       return !!session;
     }
+    if (!PASSWORD) return false;
     try {
       const raw = localStorage.getItem(TOKEN_KEY);
       if (!raw) return false;
@@ -41,7 +74,7 @@
   }
 
   function demoLogin(password) {
-    if (password !== PASSWORD) return false;
+    if (!PASSWORD || !password || password !== PASSWORD) return false;
     localStorage.setItem(TOKEN_KEY, JSON.stringify({
       token: btoa(PASSWORD),
       expires: Date.now() + SESSION_HOURS * 3600 * 1000,
@@ -123,6 +156,12 @@
         <div class="lock-title">FUSE SENTINEL</div>
         <div class="lock-sub">${supabaseClient ? 'Sign in with your team credentials' : 'Autonomous Cost Guardrail Console'}</div>
         
+        ${(!PASSWORD && !supabaseClient) ? `
+        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; font-size: 11.5px; color: #fbbf24; text-align: left; line-height: 1.45;">
+          <strong>Configuration Notice:</strong> <code>config.js</code> is missing or <code>OPERATOR_PASSWORD</code> is unconfigured.<br>
+          <span style="opacity: 0.85;">For AWS Amplify redeploys, generate <code>config.js</code> during the build phase from environment variables, or deploy <code>config.js</code> from <code>config.example.js</code>.</span>
+        </div>` : ''}
+
         <input class="lock-input" type="password" id="lock-pw" placeholder="${supabaseClient ? 'Password' : 'Enter Operator Password'}" />
         <button class="lock-btn" id="lock-submit">Unlock Console &rarr;</button>
         <div class="lock-error" id="lock-err">Invalid password. Check config.js</div>
@@ -159,10 +198,18 @@
         }
       } else {
         // Standalone operator password fallback
+        if (!PASSWORD) {
+          errMsg.innerText = 'OPERATOR_PASSWORD is not set in config.js. Configure it to unlock.';
+          errMsg.style.display = 'block';
+          btn.disabled = false;
+          btn.innerText = 'Unlock Console →';
+          return;
+        }
         if (demoLogin(val)) {
           overlay.remove();
           addLogoutButton();
         } else {
+          errMsg.innerText = 'Invalid password. Check config.js';
           errMsg.style.display = 'block';
           btn.disabled = false;
           btn.innerText = 'Unlock Console →';
@@ -207,6 +254,7 @@
   window.fuseAuth = {
     logout,
     checkAuth,
-    getSupabase: () => supabaseClient
+    getSupabase: () => supabaseClient,
+    cognito: cognitoAuthStub
   };
 })();

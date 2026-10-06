@@ -78,9 +78,10 @@ async function fetchIncidents() {
   } catch (err) {
     console.error("Failed to fetch incidents:", err);
     if (allIncidents.length === 0) {
+      const configNotice = !CONTROL_API_BASE ? "<br><span style='font-size:12px;color:var(--text-muted);font-weight:normal;'>CONTROL_API_BASE is not set in config.js. For Amplify, ensure config.js is populated during build.</span>" : "";
       container.innerHTML = `
         <div class="empty-state-box">
-          <p style="color: var(--state-danger); font-weight: 700;">Control Plane Unreachable: ${escapeHtml(err.message)}</p>
+          <p style="color: var(--state-danger); font-weight: 700;">Control Plane Unreachable: ${escapeHtml(err.message)}${configNotice}</p>
           <button class="btn btn-sync" onclick="fetchIncidents()" style="margin-top: 10px;">Retry Connection</button>
         </div>
       `;

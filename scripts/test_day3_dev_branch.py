@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+"""[LEGACY] test_day3_dev_branch.py — Legacy test of direct reasoner-to-throttle flow.
+Preserved for historical reference. Active remediation uses WAF IPSet blocking.
+"""
 import boto3
 import json
 
