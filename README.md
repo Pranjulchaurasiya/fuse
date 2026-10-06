@@ -210,6 +210,57 @@ make deploy
 
 ---
 
+## 06 / Developer CLI & Model Context Protocol (MCP)
+
+Fuse provides first-class developer tooling for both command-line terminals and AI agents (Claude Desktop, Cursor, Antigravity).
+
+### 1. Developer Terminal CLI (`cli/fuse.py`)
+Run zero-latency queries against telemetry, surgically block offending IPs, and log canary heartbeats directly from your shell:
+
+```bash
+# Install locally in editable mode
+pip install -e .
+
+# Check live guardrail status, WAF IP Set counts, and API health
+fuse status
+
+# Inspect recent runaway anomalies and Z-scores
+fuse incidents --limit 5
+
+# Surgically block an offending caller IP at the AWS WAF edge
+fuse block 198.51.100.99 --reason "Rogue crawler hammering checkout"
+
+# Release an IP from the WAF blocked set
+fuse unblock 198.51.100.99
+
+# Log a deployment heartbeat to suppress false alarm alarms during CI/CD
+fuse heartbeat --note "v1.4 canary deployment"
+```
+
+### 2. Fuse MCP Server (`mcp_server.py`)
+Fuse implements the **Model Context Protocol (MCP)** using `FastMCP`, allowing AI assistants to natively monitor AWS cost spikes and trigger circuit breakers through natural language.
+
+#### Tools Exposed via MCP:
+* `fuse_get_status()` — Live system health, WAF circuit breaker state, blocked IPs list, and incident counts.
+* `fuse_list_incidents(limit, classification_filter)` — Query detected anomalies and Bedrock AI reasoning.
+* `fuse_block_ip(ip_address, reason)` — Surgically block an abusive IP via AWS WAFv2 regional IP set.
+* `fuse_unblock_ip(ip_address)` — Release an IP address from the blocklist.
+* `fuse_log_heartbeat(note, resource)` — Post a deployment heartbeat to activate the 15-minute suppression window.
+
+#### Claude Desktop & Cursor Integration (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "fuse": {
+      "command": "python",
+      "args": ["c:/Users/pranj/Documents/Fuse/mcp_server.py"]
+    }
+  }
+}
+```
+
+---
+
 ## 07 / Security Notes & Frontend Setup
 
 ### Security Notes (Demo-Grade vs. Production)

@@ -1590,6 +1590,65 @@
       </div>
     </section>
 
+    <!-- Developer & AI Agent Tooling (CLI + Model Context Protocol) -->
+    <section id="developer-tools" class="section-block">
+      <div class="section-header">
+        <span class="section-tag">04 &bull; DEVELOPER &amp; AI AGENT INTERFACES</span>
+        <span class="section-subtitle">Control Fuse via terminal CLI or connect directly to Claude Desktop &amp; Cursor via Model Context Protocol (MCP)</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- Card 1: Fuse CLI -->
+        <div class="benchmark-card" style="min-height: auto;">
+          <div class="benchmark-header">
+            <div class="benchmark-status status-optimal">&bull; LOCAL DEVELOPER CLI</div>
+            <h3 class="benchmark-title">Fuse Terminal CLI</h3>
+            <p class="benchmark-subtitle">Zero-latency commands for telemetry, live WAF IP modifications, and deployment heartbeats.</p>
+          </div>
+
+          <div class="modal-cli-box" style="margin: 12px 0 16px 0; border-radius: 8px;">
+            <div class="modal-cli-header">
+              <span>Quick Install &amp; Commands</span>
+              <button class="btn-copy-cli" onclick="navigator.clipboard.writeText('pip install -e .\nfuse status\nfuse incidents --limit 5\nfuse block 198.51.100.99\nfuse heartbeat --note \'v1.2 release\''); alert('CLI commands copied!')">Copy</button>
+            </div>
+            <code>$ pip install -e .<br>$ fuse status<br>$ fuse incidents --limit 5<br>$ fuse block 198.51.100.99<br>$ fuse heartbeat --note "v1.2 canary"</code>
+          </div>
+
+          <div class="trust-tags" style="margin-top: auto;">
+            <span class="trust-tag">fuse status</span>
+            <span class="trust-tag">fuse block &lt;ip&gt;</span>
+            <span class="trust-tag">fuse heartbeat</span>
+            <span class="trust-tag">Zero Boto3 Config</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Fuse MCP Server -->
+        <div class="benchmark-card highlight" style="min-height: auto;">
+          <div class="benchmark-card-badge">AI AGENT NATIVE</div>
+          <div class="benchmark-header">
+            <div class="benchmark-status status-optimal">&bull; MODEL CONTEXT PROTOCOL</div>
+            <h3 class="benchmark-title">Fuse MCP Server</h3>
+            <p class="benchmark-subtitle">Expose native tools to Claude Desktop, Cursor, and autonomous agents for AI-driven FinOps &amp; Incident Defense.</p>
+          </div>
+
+          <div class="modal-cli-box" style="margin: 12px 0 16px 0; border-radius: 8px;">
+            <div class="modal-cli-header">
+              <span>claude_desktop_config.json</span>
+              <button class="btn-copy-cli" onclick="navigator.clipboard.writeText('{\n  \"mcpServers\": {\n    \"fuse\": {\n      \"command\": \"python\",\n      \"args\": [\"mcp_server.py\"]\n    }\n  }\n}'); alert('MCP config snippet copied!')">Copy</button>
+            </div>
+            <code>{<br>&nbsp;&nbsp;"mcpServers": {<br>&nbsp;&nbsp;&nbsp;&nbsp;"fuse": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "python",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": ["mcp_server.py"]<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;}<br>}</code>
+          </div>
+
+          <div class="trust-tags" style="margin-top: auto;">
+            <span class="trust-tag">fuse_get_status</span>
+            <span class="trust-tag">fuse_list_incidents</span>
+            <span class="trust-tag">fuse_block_ip</span>
+            <span class="trust-tag">FastMCP stdio</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Zero-Trust Architecture Guarantee -->
     <section id="security" class="section-block">
       <div class="trust-card">
