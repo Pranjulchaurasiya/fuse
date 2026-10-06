@@ -980,114 +980,220 @@
       color: var(--text-secondary);
     }
 
-    /* 1-Click AWS Onboarding Modal Additions */
+    /* 1-Click AWS Onboarding Modal — Vibe-Coded High-Aesthetic Upgrade */
     .modal-card-wide {
-      max-width: 480px;
+      max-width: 500px;
+      padding: 34px 36px;
+      border-radius: 20px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      background: #ffffff;
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        0 12px 32px -4px rgba(15, 23, 42, 0.12),
+        0 32px 64px -12px rgba(15, 23, 42, 0.14);
+      position: relative;
+      overflow: hidden;
     }
+
+    /* Ambient Subtle Top Glow Accent */
+    .modal-card-wide::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ec7211, #2563eb, transparent);
+      opacity: 0.85;
+    }
+
+    .modal-card-wide .modal-header {
+      margin-bottom: 16px;
+      gap: 14px;
+    }
+
+    .modal-card-wide .modal-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ff9900 0%, #ec7211 100%) !important;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(236, 114, 17, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-card-wide .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .modal-card-wide .modal-subtitle {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: #64748b;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-top: 2px;
+    }
+
+    /* Architecture Connection Visual — Sleek Pill Bar */
     .modal-connection-strip {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-light);
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin: 18px 0;
       font-size: 11px;
       font-weight: 600;
+      position: relative;
     }
     .conn-node {
       display: flex;
       align-items: center;
-      gap: 6px;
-      color: var(--text-primary);
+      gap: 7px;
+      color: #1e293b;
+      font-weight: 600;
     }
     .conn-dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: #ec7211;
+      box-shadow: 0 0 0 3px rgba(236, 114, 17, 0.2);
     }
     .conn-arrow {
       display: flex;
       align-items: center;
-      color: var(--text-muted);
+      position: relative;
     }
     .conn-badge {
       font-family: var(--font-mono);
       font-size: 10px;
+      font-weight: 600;
       background: #ffffff;
-      border: 1px solid var(--border-medium);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--brand-primary);
+      border: 1px solid #cbd5e1;
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #2563eb;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      letter-spacing: -0.01em;
     }
+
+    .modal-card-wide .modal-desc {
+      font-size: 13.5px;
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* Vibe-Coded Primary AWS Button */
     .btn-aws-primary {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
       width: 100%;
-      background: #ec7211;
+      background: linear-gradient(135deg, #f58220 0%, #ec7211 50%, #d85d00 100%);
       color: #ffffff;
       font-weight: 700;
-      font-size: 14px;
-      padding: 13px;
-      border-radius: 8px;
+      font-size: 14.5px;
+      padding: 14px 20px;
+      border-radius: 12px;
       text-decoration: none;
-      transition: all 0.15s ease;
-      box-shadow: 0 2px 6px rgba(236, 114, 17, 0.25);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 
+        0 1px 2px rgba(255, 255, 255, 0.3) inset,
+        0 4px 16px rgba(236, 114, 17, 0.32),
+        0 1px 3px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      letter-spacing: -0.01em;
+      cursor: pointer;
     }
     .btn-aws-primary:hover {
-      background: #eb5f07;
-      box-shadow: 0 4px 14px rgba(236, 114, 17, 0.35);
-      transform: translateY(-1px);
+      background: linear-gradient(135deg, #ff8c2b 0%, #f57816 50%, #e06200 100%);
+      box-shadow: 
+        0 1px 2px rgba(255, 255, 255, 0.4) inset,
+        0 8px 24px rgba(236, 114, 17, 0.45),
+        0 2px 6px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1.5px);
     }
+    .btn-aws-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(236, 114, 17, 0.3);
+    }
+
+    /* CLI Alternative Box — Polished Dev Terminal Feel */
     .modal-cli-box {
-      margin-top: 14px;
-      background: #0f172a;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #e2e8f0;
-      font-size: 11px;
+      margin-top: 16px;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #f1f5f9;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      position: relative;
     }
     .modal-cli-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #94a3b8;
-      font-size: 10px;
-      margin-bottom: 6px;
+      color: #64748b;
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
     }
     .btn-copy-cli {
       background: #1e293b;
       border: 1px solid #334155;
-      color: #cbd5e1;
-      padding: 2px 6px;
-      border-radius: 4px;
+      color: #94a3b8;
+      padding: 3px 8px;
+      border-radius: 6px;
       font-size: 10px;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .btn-copy-cli:hover {
       background: #334155;
       color: #ffffff;
+      border-color: #475569;
     }
     .modal-cli-box code {
       display: block;
       font-family: var(--font-mono);
+      font-size: 11px;
       word-break: break-all;
       color: #38bdf8;
-      line-height: 1.4;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
     }
+
+    /* Trust Footer with Crisp Icon */
     .modal-trust-footer {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--state-success);
-      margin-top: 14px;
+      gap: 7px;
+      font-size: 11.5px;
+      color: #059669;
+      margin-top: 18px;
       justify-content: center;
       font-weight: 500;
+    }
+    .modal-trust-footer svg {
+      stroke: #10b981;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -1178,13 +1284,13 @@
           <span class="conn-badge">sts:AssumeRole</span>
         </div>
         <div class="conn-node">
-          <span class="conn-dot" style="background: #2563eb;"></span>
+          <span class="conn-dot" style="background: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);"></span>
           <span>Fuse Sentinel</span>
         </div>
       </div>
 
-      <p class="modal-desc" style="margin-bottom: 18px;">
-        Deploy our verified CloudFormation template directly in your AWS console. Fuse gets scoped, short-lived CloudWatch read access and regional WAF IP block permissions.
+      <p class="modal-desc">
+        Launch our verified AWS CloudFormation stack directly in your AWS console. Fuse gets scoped read access to CloudWatch and regional WAF IP block permissions. Zero permanent credentials stored.
       </p>
 
       <!-- Instant 1-Click Action Button -->
@@ -1196,8 +1302,11 @@
       <!-- Quick CLI Alternative -->
       <div class="modal-cli-box">
         <div class="modal-cli-header">
-          <span>Or deploy via AWS CLI:</span>
-          <button type="button" class="btn-copy-cli" onclick="copyCliCommand()">Copy</button>
+          <span>Or deploy via AWS CLI</span>
+          <button type="button" class="btn-copy-cli" onclick="copyCliCommand()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span id="copy-btn-text">Copy</span>
+          </button>
         </div>
         <code id="modal-cli-code">aws cloudformation create-stack --stack-name fuse-guardrail-access --template-url https://fuse-onboarding-templates.s3.ap-south-1.amazonaws.com/fuse-cross-account-role.yaml --capabilities CAPABILITY_NAMED_IAM</code>
       </div>
@@ -1205,7 +1314,7 @@
       <!-- Trust Assurance Strip -->
       <div class="modal-trust-footer">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-        <span>Zero permanent credentials stored. Revoke anytime by deleting the stack.</span>
+        <span>Zero permanent credentials stored &bull; Revoke anytime by deleting the stack</span>
       </div>
     </div>
   </div>
@@ -1901,12 +2010,13 @@
 
       window.copyCliCommand = function () {
         const code = document.getElementById("modal-cli-code");
+        const btnText = document.getElementById("copy-btn-text");
         if (code) {
           navigator.clipboard.writeText(code.innerText.trim());
-          const btn = event.target;
-          const prev = btn.innerText;
-          btn.innerText = "Copied!";
-          setTimeout(() => { btn.innerText = prev; }, 1500);
+          if (btnText) {
+            btnText.innerText = "Copied!";
+            setTimeout(() => { btnText.innerText = "Copy"; }, 1600);
+          }
         }
       };
 
