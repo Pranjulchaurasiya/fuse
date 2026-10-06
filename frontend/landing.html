@@ -1206,7 +1206,7 @@
       </form>
 
       <div class="modal-footer-hint">
-        <span>Session lasts 8h &bull; Default: <code>fuse-operator-2024</code></span>
+        <span>Session lasts 8h &bull; Configured in Operator Console</span>
       </div>
     </div>
   </div>
@@ -1865,7 +1865,7 @@
   <script>
     (function () {
       const cfg = (typeof FUSE_CONFIG !== "undefined") ? FUSE_CONFIG : {};
-      const OPERATOR_PASSWORD = cfg.OPERATOR_PASSWORD || "fuse-operator-2024";
+      const OPERATOR_PASSWORD = cfg.OPERATOR_PASSWORD || "";
       const TOKEN_KEY = "fuse_auth_token";
       const SESSION_HOURS = 8;
 

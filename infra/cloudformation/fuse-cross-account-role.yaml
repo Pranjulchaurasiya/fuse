@@ -58,22 +58,33 @@ Resources:
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
                 Resource: '*'
-              - Sid: WAFv2BlockIPs
+              - Sid: WAFv2ListOperations
+                Effect: Allow
+                Action:
+                  - wafv2:ListIPSets
+                  - wafv2:ListWebACLs
+                Resource: '*'
+              - Sid: WAFv2IPSetManagement
                 Effect: Allow
                 Action:
                   - wafv2:GetIPSet
                   - wafv2:UpdateIPSet
-                  - wafv2:ListIPSets
                   - wafv2:CreateIPSet
+                Resource: !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/fuse-blocked-ips/*'
+              - Sid: WAFv2WebACLManagement
+                Effect: Allow
+                Action:
                   - wafv2:AssociateWebACL
                   - wafv2:CreateWebACL
-                  - wafv2:ListWebACLs
-                Resource: '*'
+                  - wafv2:GetWebACL
+                Resource:
+                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/fuse-guardrail-acl/*'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}/stages/${CustomerApiStage}'
               - Sid: APIGatewayRead
                 Effect: Allow
                 Action:
                   - apigateway:GET
-                Resource: '*'
+                Resource: !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
 
 Outputs:
   FuseRoleArn:

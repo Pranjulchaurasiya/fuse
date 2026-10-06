@@ -217,10 +217,8 @@ Resources:
                 - apigateway:PATCH
                 - apigateway:PUT
               Resource:
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages"
-                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/stages/*"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}"
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}/*"
             - Sid: IncidentsUpdateAccess
               Effect: Allow
               Action:
@@ -233,9 +231,13 @@ Resources:
               Action:
                 - wafv2:GetIPSet
                 - wafv2:UpdateIPSet
-                - wafv2:ListIPSets
               Resource:
                 - !Sub "arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/${WafIpSetName}/*"
+            - Sid: WAFListOperations
+              Effect: Allow
+              Action:
+                - wafv2:ListIPSets
+              Resource: "*"
 
   ReasonerFunction:
     Type: AWS::Serverless::Function

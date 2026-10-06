@@ -1,20 +1,52 @@
 /**
  * auth.js — Fuse Operator & Multi-Tenant Auth Gate
  * 
- * Supports two authentication paths:
+ * SECURITY NOTICE:
+ * Client-side gating (localStorage session or password check) is an interface gate
+ * for developer demos and visual evaluation only. It is NOT a cryptographic security boundary.
+ * Production SaaS deployments must authenticate requests at the API Gateway layer via
+ * Amazon Cognito User Pools (JWT authorizer) or AWS IAM SigV4 authorization.
+ * 
+ * Supported authentication paths:
  * 1. Production Mode: Supabase Auth (Magic Link & Email/Password) if SUPABASE_URL is configured.
- * 2. Standalone Demo Mode: Operator password session gate with localStorage token fallback.
+ * 2. Enterprise Mode: Amazon Cognito User Pools / OIDC JWT Authorizer (interface stubbed below).
+ * 3. Standalone Demo Mode: Operator password session gate with localStorage token fallback.
  */
 
 (function () {
   const cfg = (typeof FUSE_CONFIG !== 'undefined') ? FUSE_CONFIG : {};
   const SUPABASE_URL = cfg.SUPABASE_URL || '';
   const SUPABASE_ANON_KEY = cfg.SUPABASE_ANON_KEY || '';
-  const PASSWORD = cfg.OPERATOR_PASSWORD || 'fuse-operator-2024';
+  const PASSWORD = cfg.OPERATOR_PASSWORD || '';
   const TOKEN_KEY = 'fuse_auth_token';
   const SESSION_HOURS = 8;
 
   let supabaseClient = null;
+
+  /**
+   * Enterprise Architecture Interface: Cognito / JWT Auth Provider
+   * Ready for integration with AWS Amplify or amazon-cognito-identity-js.
+   */
+  const cognitoAuthStub = {
+    // TODO: Wire to amazon-cognito-identity-js or AWS Amplify Auth when Cognito User Pool is provisioned.
+    async isAuthenticated() {
+      return false;
+    },
+    async getAccessToken() {
+      // Return JWT Bearer token for Authorization: Bearer <token>
+      return null;
+    },
+    async getIdToken() {
+      return null;
+    },
+    async signIn(username, password) {
+      console.warn('[Fuse Auth] Cognito provider stub called. Configure COGNITO_USER_POOL_ID to activate.');
+      return { status: 'COGNITO_NOT_CONFIGURED' };
+    },
+    async signOut() {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  };
 
   // Initialize Supabase if SDK is available and credentials provided
   if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof window.supabase !== 'undefined') {
@@ -207,6 +239,7 @@
   window.fuseAuth = {
     logout,
     checkAuth,
-    getSupabase: () => supabaseClient
+    getSupabase: () => supabaseClient,
+    cognito: cognitoAuthStub
   };
 })();

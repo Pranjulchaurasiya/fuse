@@ -133,7 +133,7 @@ Circuit breaker trips and unblock recovery events dispatch formatted webhook ale
 * **Non-Blocking Delivery**: Webhook dispatch is asynchronous with strict 3-second timeouts, guaranteeing zero disruption to the primary WAF mitigation path.
 
 ### 6. Operator Session Lock Screen
-The dashboard console features a client-side operator session gate (`auth.js`), preventing unauthorized viewing of incident logs while keeping setup completely serverless.
+The dashboard console features a client-side operator session gate (`auth.js`) to prevent casual shoulder-surfing of incident logs during live demonstrations. Note that client-side localStorage gates are not cryptographic boundaries; an enterprise Cognito/JWT interface stub is provided in `frontend/auth.js` for production authorizer integration.
 
 ### 7. Layered Defense-in-Depth (Native WAF + Bedrock Poller)
 Fuse uses a two-tier strategy to eliminate detection lag:
@@ -285,6 +285,7 @@ python mcp_server.py
 ## 08 / Security Notes & Frontend Setup
 
 ### Security Notes (Developer Preview vs. Enterprise Production)
+* **Client-Side Operator Gate (`auth.js`)**: The password lock screen and localStorage session token in `frontend/auth.js` provide a convenient presentation-layer barrier during hackathons and interactive demos. It is **not** a cryptographic security boundary against reverse engineering or direct API inspection. An enterprise interface stub (`cognitoAuthStub` in `frontend/auth.js`) is included to wire production Cognito JWT tokens directly into the API Gateway Authorizer.
 * **Browser-Side API Key is Developer-Preview Only**: The client-side configuration (`config.js`) passes an API key in the browser environment. This pattern is designed for developer evaluation and initial deployment testing.
 * **CORS Does Not Stop Non-Browser Traffic (`curl`)**: Scoped CORS headers (`AllowedOrigin`) prevent unauthorized cross-origin browser requests, but they do NOT restrict command-line tools like `curl`, Postman, or automated scripts if an attacker obtains the API key.
 * **Production Authentication Architecture**: Production enterprise deployments can eliminate static browser-side API keys in favor of **Amazon Cognito User Pools** (authenticated JWT tokens validated via API Gateway Cognito Authorizers) or **AWS IAM SigV4** authorization mapped to least-privilege IAM roles.
