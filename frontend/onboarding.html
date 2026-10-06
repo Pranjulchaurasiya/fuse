@@ -661,20 +661,36 @@
             <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 24px 0;" />
 
             <div class="stage-header" style="margin-bottom: 16px;">
-              <h3 style="font-size: 15px; font-weight: 700;">Final Step: Attach WAF to API Gateway Stage</h3>
+              <h3 style="font-size: 15px; font-weight: 700;">Final Step: Provision &amp; Attach WAF in Your Account</h3>
               <p class="stage-subtitle">
-                The CloudFormation template provisions the cross-account IAM role. To enable surgical blocking, associate your WAF Web ACL (e.g. <code>fuse-guardrail-acl</code>) with your API Gateway stage in your account:
+                The CloudFormation template provisions the cross-account IAM role for Fuse. If you don't already have a WAF Web ACL, run these 3 AWS CLI commands in your account to create the IPSet, create the Web ACL, and attach it to your API Gateway stage:
               </p>
             </div>
 
             <div style="background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
-              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">1. ASSOCIATE WAF WEB ACL (RUN IN YOUR AWS CLI / TERMINAL)</div>
-              <pre style="background: #18181b; color: #f43f5e; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0 0 10px 0; font-family: var(--font-mono);"><code style="color: #e4e4e7;">aws wafv2 associate-web-acl \
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">1. CREATE FUSE IPSET</div>
+              <pre style="background: #18181b; color: #a1a1aa; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0 0 10px 0; font-family: var(--font-mono);"><code style="color: #38bdf8;">aws wafv2 create-ip-set \
+  --name fuse-blocked-ips \
+  --scope REGIONAL \
+  --ip-address-version IPV4 \
+  --addresses '[]' \
+  --description "Fuse Guardrail: Blocked runaway caller IPs"</code></pre>
+
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">2. CREATE WAF WEB ACL (ATTACH IPSET RULE)</div>
+              <pre style="background: #18181b; color: #a1a1aa; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0 0 10px 0; font-family: var(--font-mono);"><code style="color: #fbbf24;">aws wafv2 create-web-acl \
+  --name fuse-guardrail-acl \
+  --scope REGIONAL \
+  --default-action Allow={} \
+  --visibility-config SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=fuse-guardrail-acl \
+  --rules '[{"Name":"fuse-block-runaway-ips","Priority":0,"Statement":{"IPSetReferenceStatement":{"ARN":"arn:aws:wafv2:&lt;REGION&gt;:&lt;ACCOUNT_ID&gt;:regional/ipset/fuse-blocked-ips/&lt;IPSET_ID&gt;"}},"Action":{"Block":{}},"VisibilityConfig":{"SampledRequestsEnabled":true,"CloudWatchMetricsEnabled":true,"MetricName":"fuse-blocked-ips"}}]'</code></pre>
+
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">3. ASSOCIATE WEB ACL TO API GATEWAY STAGE</div>
+              <pre style="background: #18181b; color: #a1a1aa; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0 0 10px 0; font-family: var(--font-mono);"><code style="color: #f43f5e;">aws wafv2 associate-web-acl \
   --web-acl-arn &lt;YOUR_WEB_ACL_ARN&gt; \
   --resource-arn arn:aws:apigateway:&lt;REGION&gt;::/restapis/&lt;API_ID&gt;/stages/&lt;STAGE&gt;</code></pre>
 
-              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">2. VERIFY ATTACHMENT</div>
-              <pre style="background: #18181b; color: #10b981; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; font-family: var(--font-mono);"><code style="color: #e4e4e7;">aws wafv2 get-web-acl-for-resource \
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">4. VERIFY ATTACHMENT</div>
+              <pre style="background: #18181b; color: #10b981; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; font-family: var(--font-mono);"><code style="color: #10b981;">aws wafv2 get-web-acl-for-resource \
   --resource-arn arn:aws:apigateway:&lt;REGION&gt;::/restapis/&lt;API_ID&gt;/stages/&lt;STAGE&gt;</code></pre>
             </div>
 

@@ -69,14 +69,30 @@ Associating the WAF Web ACL (`fuse-guardrail-acl`) with an API Gateway stage (wh
 
 > [!NOTE]
 > **Cross-Account Customer Accounts:**
-> The customer CloudFormation template (`infra/cloudformation/fuse-cross-account-role.yaml`) provisions the least-privilege IAM role for Fuse. It **does not create or associate** the customer's WAF Web ACL. The customer must have a regional WAF Web ACL containing an IPSet rule, associate it to their API Gateway stage, and verify the attachment:
+> The customer CloudFormation template (`infra/cloudformation/fuse-cross-account-role.yaml`) provisions the least-privilege IAM role for Fuse. It **does not create or associate** the customer's WAF Web ACL. If the customer does not already have a WAF Web ACL protecting their API, they must run these AWS CLI commands in their account:
 > ```bash
-> # 1. Associate Web ACL to the API Gateway Stage
+> # 1. Create IP Set for blocked IPs
+> aws wafv2 create-ip-set \
+>   --name fuse-blocked-ips \
+>   --scope REGIONAL \
+>   --ip-address-version IPV4 \
+>   --addresses '[]' \
+>   --description "Fuse Guardrail: Blocked runaway caller IPs"
+> 
+> # 2. Create Web ACL with rule referencing fuse-blocked-ips
+> aws wafv2 create-web-acl \
+>   --name fuse-guardrail-acl \
+>   --scope REGIONAL \
+>   --default-action Allow={} \
+>   --visibility-config SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=fuse-guardrail-acl \
+>   --rules '[{"Name":"fuse-block-runaway-ips","Priority":0,"Statement":{"IPSetReferenceStatement":{"ARN":"arn:aws:wafv2:<REGION>:<ACCOUNT_ID>:regional/ipset/fuse-blocked-ips/<IPSET_ID>"}},"Action":{"Block":{}},"VisibilityConfig":{"SampledRequestsEnabled":true,"CloudWatchMetricsEnabled":true,"MetricName":"fuse-blocked-ips"}}]'
+> 
+> # 3. Associate Web ACL to the API Gateway Stage
 > aws wafv2 associate-web-acl \
 >   --web-acl-arn <WEB_ACL_ARN> \
 >   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
 > 
-> # 2. Verify Association
+> # 4. Verify Association
 > aws wafv2 get-web-acl-for-resource \
 >   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
 > ```
