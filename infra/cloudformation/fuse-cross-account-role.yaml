@@ -17,13 +17,16 @@ Parameters:
 
   CustomerApiGatewayId:
     Type: String
-    Default: '*'
-    Description: The REST API ID of the API Gateway you want Fuse to protect (or '*' for all APIs in this account).
+    Default: ''
+    Description: Optional REST API ID of the API Gateway you want Fuse to protect. Leave empty if managing WAF independently without API Gateway stage association.
 
   CustomerApiStage:
     Type: String
     Default: prod
     Description: The stage name (e.g. prod, staging).
+
+Conditions:
+  HasApiGatewayId: !Not [!Equals [!Ref CustomerApiGatewayId, '']]
 
 Resources:
   FuseAccessRole:
@@ -35,13 +38,13 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::${FuseAccountId}:root"
+              AWS: !Sub 'arn:aws:iam::${FuseAccountId}:root'
             Action: sts:AssumeRole
             Condition:
               StringEquals:
                 sts:ExternalId: !Ref FuseExternalId
       Policies:
-        - PolicyName: fuse-read-cloudwatch
+        - PolicyName: fuse-base-monitoring-and-waf
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -77,21 +80,36 @@ Resources:
               - Sid: WAFv2WebACLManagement
                 Effect: Allow
                 Action:
-                  - wafv2:AssociateWebACL
                   - wafv2:CreateWebACL
                   - wafv2:GetWebACL
                   - wafv2:UpdateWebACL
                 Resource:
                   - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/fuse-guardrail-acl/*'
                   - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/*'
-                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}/stages/${CustomerApiStage}'
-              - Sid: APIGatewayRead
-                Effect: Allow
-                Action:
-                  - apigateway:GET
-                Resource:
-                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis'
-                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
+
+  FuseApiGatewayAccessPolicy:
+    Type: AWS::IAM::Policy
+    Condition: HasApiGatewayId
+    Properties:
+      PolicyName: fuse-apigateway-scoped-access
+      Roles:
+        - !Ref FuseAccessRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: APIGatewayScopedRead
+            Effect: Allow
+            Action:
+              - apigateway:GET
+            Resource:
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
+          - Sid: WAFv2AssociateStage
+            Effect: Allow
+            Action:
+              - wafv2:AssociateWebACL
+            Resource:
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}/stages/${CustomerApiStage}'
+              - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/*'
 
 Outputs:
   FuseRoleArn:

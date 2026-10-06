@@ -95,7 +95,7 @@ def register_tenant(event):
     body = json.loads(event.get('body') or '{}')
     email = body.get('email', '').strip()
     aws_account_id = body.get('aws_account_id', '').strip()
-    api_gateway_id = body.get('api_gateway_id', '').strip() or '*'
+    api_gateway_id = body.get('api_gateway_id', '').strip()
     api_stage = body.get('api_stage', 'prod').strip() or 'prod'
 
     if not email or not aws_account_id:

@@ -131,17 +131,24 @@ def main():
         template_mark = "YES (Allowed)" if in_template else "—"
         cross_mark = "YES (Allowed)" if in_cross else "—"
 
-        # Runtime critical calls: if in lambdas/, must be allowed
         call_files = [c[0] for c in calls[method]]
-        is_lambda = any("lambdas" in f for f in call_files)
+        is_central_lambda = any("lambdas" in f for f in call_files)
+        is_cross_account_call = method in [
+            "get_metric_data", "get_metric_statistics", "list_metrics",
+            "filter_log_events", "describe_log_groups", "describe_log_streams",
+            "get_ip_set", "update_ip_set", "list_ip_sets"
+        ]
 
-        if is_lambda and not in_template and not in_cross:
-            status = "MISSING"
+        missing_reasons = []
+        if is_central_lambda and not in_template:
+            missing_reasons.append(f"MISSING in template.yaml")
             all_covered = False
-        else:
-            status = "OK"
+        if is_cross_account_call and not in_cross:
+            missing_reasons.append(f"MISSING in cross-account role")
+            all_covered = False
 
-        print(f"{method:<22} | {action:<28} | {template_mark:<14} | {cross_mark:<14}")
+        status_flag = " [FAIL: " + ", ".join(missing_reasons) + "]" if missing_reasons else ""
+        print(f"{method:<22} | {action:<28} | {template_mark:<14} | {cross_mark:<14}{status_flag}")
 
     print("-" * 84)
 
