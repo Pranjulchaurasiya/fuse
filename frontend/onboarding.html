@@ -661,6 +661,26 @@
             <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 24px 0;" />
 
             <div class="stage-header" style="margin-bottom: 16px;">
+              <h3 style="font-size: 15px; font-weight: 700;">Final Step: Attach WAF to API Gateway Stage</h3>
+              <p class="stage-subtitle">
+                The CloudFormation template provisions the cross-account IAM role. To enable surgical blocking, associate your WAF Web ACL (e.g. <code>fuse-guardrail-acl</code>) with your API Gateway stage in your account:
+              </p>
+            </div>
+
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">1. ASSOCIATE WAF WEB ACL (RUN IN YOUR AWS CLI / TERMINAL)</div>
+              <pre style="background: #18181b; color: #f43f5e; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0 0 10px 0; font-family: var(--font-mono);"><code style="color: #e4e4e7;">aws wafv2 associate-web-acl \
+  --web-acl-arn &lt;YOUR_WEB_ACL_ARN&gt; \
+  --resource-arn arn:aws:apigateway:&lt;REGION&gt;::/restapis/&lt;API_ID&gt;/stages/&lt;STAGE&gt;</code></pre>
+
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">2. VERIFY ATTACHMENT</div>
+              <pre style="background: #18181b; color: #10b981; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; font-family: var(--font-mono);"><code style="color: #e4e4e7;">aws wafv2 get-web-acl-for-resource \
+  --resource-arn arn:aws:apigateway:&lt;REGION&gt;::/restapis/&lt;API_ID&gt;/stages/&lt;STAGE&gt;</code></pre>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 24px 0;" />
+
+            <div class="stage-header" style="margin-bottom: 16px;">
               <h3 style="font-size: 15px; font-weight: 700;">Verify Connection</h3>
               <p class="stage-subtitle">Once the stack status is CREATE_COMPLETE, verify the role ARN:</p>
             </div>
@@ -685,6 +705,14 @@
               <p class="stage-subtitle" style="margin-bottom: 24px;">
                 Fuse has verified short-lived cross-account access. Your API Gateway is now protected by out-of-band statistical anomaly detection and surgical WAF containment.
               </p>
+
+              <div style="background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: 8px; padding: 14px; margin-bottom: 24px; text-align: left;">
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">WAF Attachment Verification</div>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 8px 0; line-height: 1.5;">
+                  Remember to ensure your WAF Web ACL is associated with the monitored API stage so that IP blocks applied by Fuse take immediate effect:
+                </p>
+                <pre style="background: #18181b; color: #a1a1aa; padding: 8px 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; font-family: var(--font-mono);"><code style="color: #e4e4e7;">aws wafv2 get-web-acl-for-resource --resource-arn arn:aws:apigateway:&lt;REGION&gt;::/restapis/&lt;API_ID&gt;/stages/&lt;STAGE&gt;</code></pre>
+              </div>
 
               <a href="index.html" class="btn-submit" style="text-decoration: none;">
                 <span>Open Fuse Operator Console &rarr;</span>

@@ -65,7 +65,21 @@ If you prefer to inspect, customize, or execute individual steps manually, follo
    last line of whatever counts as your "deploy" step for the demo API
 
 ### WAF Web ACL Stage Association (Setup-Only Operation)
-Associating the WAF Web ACL (`fuse-guardrail-acl`) with an API Gateway stage (which requires `wafv2:AssociateWebACL` and `apigateway:SetWebACL`) is performed **once during initial onboarding setup** (via `scripts/setup_waf.py` or the AWS WAF Console). 
+Associating the WAF Web ACL (`fuse-guardrail-acl`) with an API Gateway stage (which requires `wafv2:AssociateWebACL` and `apigateway:SetWebACL`) is performed **once during initial onboarding setup** (via `scripts/setup_waf.py`, AWS CLI, or the AWS WAF Console). 
+
+> [!NOTE]
+> **Cross-Account Customer Accounts:**
+> The customer CloudFormation template (`infra/cloudformation/fuse-cross-account-role.yaml`) provisions the least-privilege IAM role for Fuse. It **does not create or associate** the customer's WAF Web ACL. The customer must have a regional WAF Web ACL containing an IPSet rule, associate it to their API Gateway stage, and verify the attachment:
+> ```bash
+> # 1. Associate Web ACL to the API Gateway Stage
+> aws wafv2 associate-web-acl \
+>   --web-acl-arn <WEB_ACL_ARN> \
+>   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
+> 
+> # 2. Verify Association
+> aws wafv2 get-web-acl-for-resource \
+>   --resource-arn arn:aws:apigateway:<REGION>::/restapis/<API_ID>/stages/<STAGE>
+> ```
 
 At runtime, Fuse never modifies or disassociates stage attachments; the Remediator Lambda operates with surgical least privilege, performing mutations strictly on the WAF IPSet (`wafv2:GetIPSet` and `wafv2:UpdateIPSet`). Neither the runtime cross-account IAM role nor the central SAM stack requires `apigateway:SetWebACL` or runtime `wafv2:AssociateWebACL` permissions.
 
