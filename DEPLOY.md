@@ -82,11 +82,15 @@ When deploying directly from your local terminal or CLI without linking GitHub b
    export TARGET_API_URL="https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items"
    export OPERATOR_PASSWORD="<your-operator-password>"
    ```
-2. Run the deployment script:
+2. (Optional) Run local packaging & verification with `--dry-run` (zero AWS calls):
+   ```bash
+   python scripts/deploy_amplify.py --dry-run
+   ```
+3. Run live deployment to the existing Amplify app (`fuse-console` / `d1hndpgpwb40h8`):
    ```bash
    python scripts/deploy_amplify.py
    ```
-`deploy_amplify.py` generates a temporary `frontend/config.js` via `scripts/generate_config.js`, bundles `frontend/` into a ZIP archive, streams it to AWS Amplify via pre-signed S3 URL, triggers the deployment job, and immediately cleans up the local `config.js` to prevent accidental commits.
+`deploy_amplify.py` generates a temporary `frontend/config.js` via `scripts/generate_config.js`, bundles `frontend/` into a sanitized ZIP archive (excluding `.git`, `.env*`, and `node_modules`), uploads it to the existing live app (`d1hndpgpwb40h8`), starts the deployment job, and cleans up the local `config.js`. It never creates duplicate Amplify apps or alters the live URL (`https://main.d1hndpgpwb40h8.amplifyapp.com`).
 
 ### Path B: Git-Connected Continuous Deployment (`amplify.yml`)
 When linking your GitHub repository to AWS Amplify Hosting in the AWS Console:
