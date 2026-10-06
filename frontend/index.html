@@ -211,6 +211,37 @@
                 </div>
               </div>
             </div>
+
+            <!-- Developer CLI & Model Context Protocol (MCP) Tile -->
+            <div class="side-tile tilt-3d" style="border: 1px solid #bfdbfe; background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);">
+              <div class="side-tile-header">
+                <h3 class="side-tile-title" style="color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb;"></span>
+                  AI Agents &amp; CLI Interface
+                </h3>
+                <span class="ledger-status-tag" style="background: #dbeafe; color: #1e40af; font-weight: 700;">MCP READY</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5;">
+                Control Fuse via terminal or connect to <strong>Claude Desktop</strong> &amp; <strong>Cursor</strong> using the Model Context Protocol.
+              </div>
+              <div style="background: #0f172a; border-radius: 6px; padding: 8px 10px; font-family: var(--font-mono); font-size: 10px; color: #38bdf8; margin-bottom: 10px;">
+                <div style="color: #94a3b8; font-size: 9px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                  <span>TERMINAL CLI</span>
+                  <span style="color: #cbd5e1; cursor: pointer;" onclick="navigator.clipboard.writeText('pip install -e .\nfuse status'); alert('CLI command copied!')">Copy</span>
+                </div>
+                <code>$ pip install -e .<br>$ fuse status</code>
+              </div>
+              <div style="background: #0f172a; border-radius: 6px; padding: 8px 10px; font-family: var(--font-mono); font-size: 10px; color: #38bdf8;">
+                <div style="color: #94a3b8; font-size: 9px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                  <span>MCP SERVER (STDIO)</span>
+                  <span style="color: #cbd5e1; cursor: pointer;" onclick="navigator.clipboard.writeText('python mcp_server.py'); alert('MCP command copied!')">Copy</span>
+                </div>
+                <code>$ python mcp_server.py</code>
+              </div>
+              <div style="margin-top: 10px; text-align: right;">
+                <a href="landing.html#developer-tools" style="font-size: 11px; font-weight: 600; color: #2563eb; text-decoration: none;">View Full Setup Guide &rarr;</a>
+              </div>
+            </div>
           </aside>
         </div>
       </section>
