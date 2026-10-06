@@ -64,6 +64,23 @@ If you prefer to inspect, customize, or execute individual steps manually, follo
 8. **Deploy heartbeat wiring** — add the `deploy_heartbeat.py` call as the
    last line of whatever counts as your "deploy" step for the demo API
 
+## AWS Amplify Hosting Deployment & Environment Variables
+
+When deploying the frontend via AWS Amplify Hosting (e.g. connected to your GitHub repository), `frontend/config.js` is automatically generated during the build phase (`amplify.yml`) using `scripts/generate_config.js`.
+
+Configure the following environment variables in the **AWS Amplify Console > App settings > Environment variables**:
+
+| Variable | Description | Example / Source |
+|---|---|---|
+| `CONTROL_API_BASE` | Base URL of the deployed Fuse Control Plane API | `https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod` (from SAM Output `ControlApiUrl`) |
+| `API_KEY` | API Key for authenticating Control API requests (`x-api-key`) | Fetch with: `aws apigateway get-api-key --api-key <KeyId> --include-value` |
+| `TARGET_API_URL` | Monitored target API endpoint for live circuit status probes | `https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items` |
+| `OPERATOR_PASSWORD` | Password required to unlock the demo operator dashboard | Secret password string chosen by operator |
+
+> [!WARNING]
+> **Client-Side Auth Security Notice:**
+> `OPERATOR_PASSWORD` embedded in `frontend/config.js` is delivered to the browser runtime. While it prevents casual unauthorized viewing of the console during hackathon demonstrations, it is **not a cryptographic security boundary** (any browser user inspecting network responses or client memory can see it). In production multi-tenant environments, enforce authentication at the API Gateway layer using Amazon Cognito User Pools (JWT authorizer) or AWS IAM SigV4.
+
 ## Environment variables (per Lambda)
 | Lambda | Env vars |
 |---|---|
