@@ -6,6 +6,11 @@ Description: >-
   and write WAFv2 IP blocks. No credentials are shared.
 
 Parameters:
+  FuseAccountId:
+    Type: String
+    Default: '515903395012'
+    Description: The Fuse SaaS Control Plane AWS Account ID that is authorized to assume this role.
+
   FuseExternalId:
     Type: String
     Description: Unique External ID provided by Fuse during onboarding. Do not share this.
@@ -29,7 +34,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: arn:aws:iam::515903395012:root
+              AWS: !Sub "arn:aws:iam::${FuseAccountId}:root"
             Action: sts:AssumeRole
             Condition:
               StringEquals:

@@ -1858,10 +1858,14 @@
     })();
   </script>
 
+  <!-- Global Config -->
+  <script src="config.js"></script>
+
   <!-- Operator Login Modal Controller -->
   <script>
     (function () {
-      const OPERATOR_PASSWORD = "fuse-operator-2024";
+      const cfg = (typeof FUSE_CONFIG !== "undefined") ? FUSE_CONFIG : {};
+      const OPERATOR_PASSWORD = cfg.OPERATOR_PASSWORD || "fuse-operator-2024";
       const TOKEN_KEY = "fuse_auth_token";
       const SESSION_HOURS = 8;
 
