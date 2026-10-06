@@ -1,26 +1,24 @@
-# Fuse: The Cognitive Circuit Breaker for Your AWS Bill
+# Fuse: Autonomous Cloud Cost Guardrail & WAF Circuit Breaker
 
 > **An autonomous, context-aware circuit breaker and surgical WAF guardrail for serverless APIs powered by Amazon Bedrock, EventBridge, DynamoDB, AWS WAFv2, and Cross-Account IAM.**  
-> Built for **First Commit — Bharat Builds Tour 2026 (Ship It Track)**  
-> Builder: **Pranjul Chaurasiya** (@pranjul_chaurasiya | Team Code: `ZK2FP6`)
+> Created by **Pranjul Chaurasiya** ([@pranjul_chaurasiya](https://github.com/Pranjulchaurasiya))
 
-[Live Console (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Onboarding Portal](frontend/onboarding.html) &bull; [Demo Video (YouTube)](https://youtu.be/UWzPBdO63ek) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [3-Minute Demo Video Script](docs/demo-script.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+[Live Platform](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Customer Onboarding](frontend/onboarding.html) &bull; [Demo Walkthrough](https://youtu.be/UWzPBdO63ek) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
 
 [![Live Console](https://img.shields.io/badge/Live_Console-AWS_Amplify_Hosting_(HTTPS)-blue?style=for-the-badge&logo=awsamplify)](https://main.d1hndpgpwb40h8.amplifyapp.com)
-[![Demo Video](https://img.shields.io/badge/Demo_Video-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/UWzPBdO63ek)
+[![Product Walkthrough](https://img.shields.io/badge/Walkthrough-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/UWzPBdO63ek)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
 [![AWS WAFv2](https://img.shields.io/badge/Remediation-WAFv2_IPSet_Surgical_Block-red?style=for-the-badge&logo=awswaf)](https://aws.amazon.com/waf/)
-[![Track](https://img.shields.io/badge/Track-Ship_It-green?style=for-the-badge)](https://www.wemakedevs.org/aws/first-commit)
 
 ---
 
-## Quick Verification (for Judges)
-- **Live Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Protected by Operator Session Gate &mdash; Default: `fuse-operator-2024`)*
+## Live Platform & Verification
+- **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Console Gate: `fuse-operator-2024`)*
 - **Customer Onboarding**: [frontend/onboarding.html](frontend/onboarding.html) &mdash; 1-click Cross-Account IAM CloudFormation onboarding without sharing any AWS credentials.
-- **Demo Video (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) &mdash; full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and surgical WAF mitigation.
+- **Product Walkthrough (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) &mdash; full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and surgical WAF mitigation.
 - **Every AWS resource ID in this README is real and independently checkable** &mdash; see Section 05 for exact names/IDs
-- **AWS Builder Center Blog Post**: [docs/blog-post.md](docs/blog-post.md) *(published link once live)*
+- **AWS Builder Center Post**: [docs/blog-post.md](docs/blog-post.md)
 
 [![Watch the Fuse 3-Minute Demo Video](https://img.youtube.com/vi/UWzPBdO63ek/maxresdefault.jpg)](https://youtu.be/UWzPBdO63ek)
 *Click above to watch the complete 3-minute end-to-end video demonstration on YouTube.*
@@ -185,7 +183,7 @@ The Fuse infrastructure is packaged and provisioned using **AWS Serverless Appli
 > **Notice — Legacy Terraform Deprecated**: Previous Terraform configurations have been moved to `infra/legacy-terraform/` and are strictly deprecated. All ongoing development, CI/CD, and deployments use AWS SAM. Customer-side onboarding remains in `infra/cloudformation/fuse-customer-onboarding.yaml`.
 
 ### SAM Stack Architecture
-- **Stack Name**: `fuse-sam` (isolated from any pre-existing hackathon demo resources)
+- **Stack Name**: `fuse-sam`
 - **DynamoDB Tables**: Auto-named by CloudFormation to prevent name collisions
 - **Bedrock Model**: Defaults to cross-region inference profile `apac.amazon.nova-micro-v1:0`
 - **Control API**: Secured with `ApiKeyRequired: true`, dedicated API Key, Usage Plan, and scoped CORS
@@ -263,10 +261,10 @@ Fuse implements the **Model Context Protocol (MCP)** using `FastMCP`, allowing A
 
 ## 07 / Security Notes & Frontend Setup
 
-### Security Notes (Demo-Grade vs. Production)
-* **Browser-Side API Key is Demo-Grade Only**: The client-side configuration (`config.js`) exposes the API key to the browser environment. Anyone viewing source code or inspecting DevTools network traffic can view this key. This pattern is strictly for hackathons and scripted prototypes.
+### Security Notes (Developer Preview vs. Enterprise Production)
+* **Browser-Side API Key is Developer-Preview Only**: The client-side configuration (`config.js`) passes an API key in the browser environment. This pattern is designed for developer evaluation and initial deployment testing.
 * **CORS Does Not Stop Non-Browser Traffic (`curl`)**: Scoped CORS headers (`AllowedOrigin`) prevent unauthorized cross-origin browser requests, but they do NOT restrict command-line tools like `curl`, Postman, or automated scripts if an attacker obtains the API key.
-* **Production Authentication Architecture**: Production deployments must eliminate static browser-side API keys in favor of **Amazon Cognito User Pools** (authenticated JWT tokens validated via API Gateway Cognito Authorizers) or **AWS IAM SigV4** authorization mapped to least-privilege IAM roles.
+* **Production Authentication Architecture**: Production enterprise deployments can eliminate static browser-side API keys in favor of **Amazon Cognito User Pools** (authenticated JWT tokens validated via API Gateway Cognito Authorizers) or **AWS IAM SigV4** authorization mapped to least-privilege IAM roles.
 
 ### Frontend Configuration
 1. **Retrieve API Key Value**:
@@ -304,21 +302,21 @@ make delete
 
 ---
 
-## 09 / Hackathon Evaluation Alignment (First Commit)
+## 09 / Core Capabilities & Architecture Highlights
 
-| Hackathon Criteria | How Fuse Directly Satisfies It |
+| Capability | How Fuse Delivers It |
 | :--- | :--- |
-| **01 / Idea & Impact** | Solves the silent financial liability of serverless auto-scaling by replacing dumb thresholds with context-aware anomaly detection. |
-| **02 / Built on AWS** | Deployed live across 6 native AWS services in `ap-south-1`: Lambda, API Gateway, DynamoDB, Bedrock, CloudWatch, EventBridge, and S3/Amplify. |
-| **03 / Learning** | Mastered Amazon Bedrock Converse API structured tool calling, CloudWatch metric correlation, and isolated control plane architecture. |
-| **04 / Execution** | Complete end-to-end working system: live poller, Bedrock classification, approval queue, stage throttle remediation, and responsive dashboard. |
-| **05 / Demo Video** | [Watch on YouTube (2m 58s)](https://youtu.be/UWzPBdO63ek) — 3-minute scripted demonstration showing live anomaly detection, human approval, and real HTTP 429 stage cutoff. |
+| **Out-of-Band Telemetry** | 0 ms proxy latency; EventBridge polls CloudWatch metrics every 60s without placing inline proxy middleware on client traffic. |
+| **Deterministic Anomaly Math** | Evaluates volume floors, Z-score variance (Z &ge; 2.5), and caller dominance (> 85%) before invoking AI models. |
+| **Asynchronous Cognitive Enrichment** | Uses Amazon Bedrock Converse API with structured `toolConfig` for rich root-cause narrative synthesis without blocking mitigation. |
+| **Surgical Edge Containment** | Updates AWS WAFv2 regional IP Sets to drop offending /32 caller CIDRs at the AWS edge with HTTP 403, preserving 100% of legitimate customer traffic. |
+| **Automated Cooldown Recovery** | Stale IP blocks automatically unblock after a configurable 15-minute cooldown window. |
 
 ---
 
-## 10 / Key Learnings
+## 10 / Key Architectural Principles
 
-1. **Structured Tool Calls over Free-Text**: Using Bedrock Converse with `toolConfig` turned an LLM into a reliable, typed microservice with zero JSON parsing failures.
+1. **Structured Tool Calls over Free-Text**: Using Bedrock Converse with `toolConfig` turns an LLM into a reliable, typed microservice with zero JSON parsing failures.
 2. **Context Eliminates False Outages**: Correlating deployment heartbeats and unique caller ratios completely solves the false-positive outage problem inherent to static CloudWatch alarms.
 3. **Control Plane Isolation is Essential**: Decoupling the management API from the workload API guarantees that an emergency circuit trip never locks the operator out of the control room.
 
@@ -326,12 +324,12 @@ make delete
 
 ## 11 / Project Documentation
 
-* [YouTube Demo Video](https://youtu.be/UWzPBdO63ek) — 3-Minute Live Anomaly Mitigation Walkthrough
-* [docs/demo-script.md](docs/demo-script.md) — 3-Minute Video Walkthrough Script
+* [Product Walkthrough Video](https://youtu.be/UWzPBdO63ek) — 3-Minute Live Anomaly Mitigation Walkthrough
 * [docs/blog-post.md](docs/blog-post.md) — AWS Builder Center Technical Article
+* [docs/demo-script.md](docs/demo-script.md) — Full Walkthrough Demonstration Script
 * [PRD.md](PRD.md) — Product Requirements Document
 * [ARCHITECTURE.md](ARCHITECTURE.md) — Architecture & Data Flow Specifications
 * [SCHEMA.md](SCHEMA.md) — DynamoDB Table Schemas
 * [API.md](API.md) — Internal Interface Contracts
-* [TASKS.md](TASKS.md) — Hackathon Build Log & Progress
+* [TASKS.md](TASKS.md) — Engineering Changelog & Roadmap
 
