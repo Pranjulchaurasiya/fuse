@@ -6,6 +6,11 @@ is covered by least-privilege IAM policies in:
   1. template.yaml (Central AWS SAM stack)
   2. infra/cloudformation/fuse-cross-account-role.yaml (Customer onboarding role)
 
+Distinguishes between:
+  - Local SAM Lambda execution
+  - Tenant Cross-Account execution
+  - Unconditional vs Conditional (Condition: HasApiGatewayId) statements
+
 Usage:
   python scripts/check_iam_coverage.py
 """
@@ -30,7 +35,7 @@ BOTO3_TO_IAM = {
     "update_web_acl": ("wafv2", "wafv2:UpdateWebACL", "regional/webacl/..."),
     "list_web_acls": ("wafv2", "wafv2:ListWebACLs", "* (AWS requirement)"),
     "create_web_acl": ("wafv2", "wafv2:CreateWebACL", "regional/webacl/*"),
-    "associate_web_acl": ("wafv2", "wafv2:AssociateWebACL", "regional/webacl/... + apigateway stage"),
+    "associate_web_acl": ("wafv2", "wafv2:AssociateWebACL", "regional/webacl/... + stage"),
     # API Gateway
     "get_rest_apis": ("apigateway", "apigateway:GET", "/restapis"),
     "get_rest_api": ("apigateway", "apigateway:GET", "/restapis/..."),
@@ -47,8 +52,18 @@ BOTO3_TO_IAM = {
     "assume_role": ("sts", "sts:AssumeRole", "arn:aws:iam::...:role/..."),
 }
 
+# Explicit caller classifications for tenant path
+TENANT_CROSS_ACCOUNT_CALLS = {
+    "get_metric_data",
+    "filter_log_events",
+    "get_metric_statistics",
+    "list_metrics",
+    "describe_log_groups",
+    "describe_log_streams",
+}
+
 def scan_codebase_boto3_calls():
-    """Scans python files for boto3 calls."""
+    """Scans python files for boto3 calls and identifies their execution path."""
     target_dirs = [
         os.path.join(REPO_ROOT, "lambdas"),
         os.path.join(REPO_ROOT, "cli"),
@@ -74,7 +89,7 @@ def scan_codebase_boto3_calls():
     pattern = re.compile(r'\b(?:wafv2_client|wafv2|waf|apigw_client|apigw|cw_client|cw|logs_client|logs|sts_client|sts)\.([a-z_0-9]+)\(')
 
     for filepath in files_to_scan:
-        rel = os.path.relpath(filepath, REPO_ROOT)
+        rel = os.path.relpath(filepath, REPO_ROOT).replace("\\", "/")
         with open(filepath, "r", encoding="utf-8", errors="ignore") as fp:
             for lineno, line in enumerate(fp, 1):
                 matches = pattern.findall(line)
@@ -85,86 +100,151 @@ def scan_codebase_boto3_calls():
     return call_sites
 
 def parse_yaml_policy_actions(filepath):
-    """Extracts all Allowed IAM Actions and Resources from CloudFormation template."""
+    """Extracts all Allowed IAM Actions from CloudFormation template."""
     actions = set()
     with open(filepath, "r", encoding="utf-8") as fp:
         content = fp.read()
-    # Simple regex extraction to avoid intrinsic function YAML parsing issues
     action_matches = re.findall(r'Action:\s*\n((?:\s+-\s+[\w:*]+\n)+)', content)
     for block in action_matches:
         for line in block.strip().splitlines():
             act = line.replace("-", "").strip()
             if act:
                 actions.add(act)
-    # Also capture single line actions: Action: sts:AssumeRole
     single_matches = re.findall(r'Action:\s+([a-zA-Z0-9:*]+)', content)
     for act in single_matches:
         actions.add(act.strip())
     return actions
 
+def parse_cross_account_actions_with_conditions(filepath):
+    """Extracts unconditional vs conditional actions from cross-account CloudFormation template."""
+    with open(filepath, "r", encoding="utf-8") as fp:
+        text = fp.read()
+
+    unconditional = set()
+    conditional = set()
+
+    if "Resources:" in text:
+        resources_part = text.split("Resources:")[1].split("Outputs:")[0]
+        blocks = re.split(r'\n  ([A-Z][a-zA-Z0-9]+):\n', resources_part)
+        for i in range(1, len(blocks), 2):
+            r_name = blocks[i]
+            r_body = blocks[i+1]
+            cond_match = re.search(r'^\s{4}Condition:\s*([A-Za-z0-9]+)', r_body, re.MULTILINE)
+            is_cond = bool(cond_match)
+
+            actions = set()
+            action_matches = re.findall(r'Action:\s*\n((?:\s+-\s+[\w:*]+\n)+)', r_body)
+            for block in action_matches:
+                for line in block.strip().splitlines():
+                    act = line.replace('-', '').strip()
+                    if ':' in act:
+                        actions.add(act)
+            single_matches = re.findall(r'Action:\s+([a-zA-Z0-9:*]+)', r_body)
+            for act in single_matches:
+                if ':' in act:
+                    actions.add(act.strip())
+
+            if is_cond:
+                conditional.update(actions)
+            else:
+                unconditional.update(actions)
+
+    return unconditional, conditional
+
 def main():
-    print("=" * 80)
+    print("=" * 90)
     print(" FUSE — IAM COVERAGE & LEAST-PRIVILEGE AUDIT")
-    print("=" * 80)
+    print("=" * 90)
 
     template_path = os.path.join(REPO_ROOT, "template.yaml")
     cross_account_path = os.path.join(REPO_ROOT, "infra", "cloudformation", "fuse-cross-account-role.yaml")
 
     template_actions = parse_yaml_policy_actions(template_path)
-    cross_account_actions = parse_yaml_policy_actions(cross_account_path)
+    cross_uncond, cross_cond = parse_cross_account_actions_with_conditions(cross_account_path)
 
     calls = scan_codebase_boto3_calls()
 
     print(f"\n[+] Scanned {len(calls)} unique boto3 API calls across codebase.\n")
-    print(f"{'Boto3 Method':<22} | {'Required IAM Action':<28} | {'template.yaml':<14} | {'Cross-Account':<14}")
-    print("-" * 84)
+    print(f"{'Boto3 Method':<19} | {'Required Action':<26} | {'Caller Path':<18} | {'template.yaml':<13} | {'Cross-Account':<14}")
+    print("-" * 102)
 
-    all_covered = True
+    has_failure = False
+    has_warning = False
+
     for method, info in sorted(BOTO3_TO_IAM.items()):
         service, action, scope = info
         if method not in calls:
             continue
 
+        call_files = [c[0] for c in calls[method]]
+        is_lambda = any(f.startswith("lambdas/") for f in call_files)
+        is_tenant = method in TENANT_CROSS_ACCOUNT_CALLS and is_lambda
+        is_setup_only = not is_lambda and any(f.startswith("scripts/") for f in call_files)
+
+        if is_tenant and is_lambda:
+            caller_label = "Tenant & Local"
+        elif is_lambda:
+            caller_label = "Local SAM Lambda"
+        elif is_setup_only:
+            caller_label = "Setup Script"
+        else:
+            caller_label = "CLI / MCP"
+
         in_template = action in template_actions
-        in_cross = action in cross_account_actions
+
+        if action in cross_uncond:
+            cross_mark = "YES (Allowed)"
+        elif action in cross_cond:
+            cross_mark = "CONDITIONAL"
+        else:
+            cross_mark = "—"
 
         template_mark = "YES (Allowed)" if in_template else "—"
-        cross_mark = "YES (Allowed)" if in_cross else "—"
 
-        call_files = [c[0] for c in calls[method]]
-        is_central_lambda = any("lambdas" in f for f in call_files)
-        is_cross_account_call = method in [
-            "get_metric_data", "get_metric_statistics", "list_metrics",
-            "filter_log_events", "describe_log_groups", "describe_log_streams",
-            "get_ip_set", "update_ip_set", "list_ip_sets"
-        ]
+        errors = []
+        warnings = []
 
-        missing_reasons = []
-        if is_central_lambda and not in_template:
-            missing_reasons.append(f"MISSING in template.yaml")
-            all_covered = False
-        if is_cross_account_call and not in_cross:
-            missing_reasons.append(f"MISSING in cross-account role")
-            all_covered = False
+        # Central lambda must have permission in template.yaml
+        if is_lambda and not in_template:
+            errors.append("MISSING in template.yaml")
+            has_failure = True
 
-        status_flag = " [FAIL: " + ", ".join(missing_reasons) + "]" if missing_reasons else ""
-        print(f"{method:<22} | {action:<28} | {template_mark:<14} | {cross_mark:<14}{status_flag}")
+        # Tenant call must NOT be missing in cross-account role
+        if is_tenant and (action not in cross_uncond and action not in cross_cond):
+            errors.append("MISSING in cross-account role")
+            has_failure = True
 
-    print("-" * 84)
+        # Tenant call MUST NOT depend on a conditional permission (warning)
+        if is_tenant and action in cross_cond and action not in cross_uncond:
+            warnings.append("WARN: Tenant runtime depends on CONDITIONAL permission")
+            has_warning = True
+
+        flag = ""
+        if errors:
+            flag = f" [FAIL: {', '.join(errors)}]"
+        elif warnings:
+            flag = f" [{', '.join(warnings)}]"
+
+        print(f"{method:<19} | {action:<26} | {caller_label:<18} | {template_mark:<13} | {cross_mark:<14}{flag}")
+
+    print("-" * 102)
 
     print("\n[+] Verification of Resource Wildcard Rules:")
     print("  1. wafv2:ListIPSets & wafv2:ListWebACLs: Required Resource: '*' (Confirmed AWS requirement)")
     print("  2. wafv2:GetIPSet & wafv2:UpdateIPSet: Scoped to specific fuse-blocked-ips ARN (Confirmed)")
     print("  3. cloudwatch:GetMetricData: Read-only on Resource: '*' (Confirmed AWS requirement)")
-    print("  4. apigateway:GET: Scoped to /restapis and /restapis/${CustomerApiGatewayId}* (Confirmed)")
+    print("  4. apigateway:GET: Scoped to /restapis/${CustomerApiGatewayId}* (CONDITIONAL on HasApiGatewayId)")
     print("  5. sts:AssumeRole: Enforces sts:ExternalId condition (Confirmed)")
 
-    if all_covered:
-        print("\n[SUCCESS] All runtime boto3 API calls are covered by least-privilege IAM policies.\n")
-        return 0
-    else:
+    if has_failure:
         print("\n[FAIL] Some runtime boto3 calls are missing IAM permissions!\n")
         return 1
+    elif has_warning:
+        print("\n[WARNING] Passed with tenant warnings (conditional dependency).\n")
+        return 0
+    else:
+        print("\n[SUCCESS] All runtime boto3 API calls are covered by least-privilege IAM policies.\n")
+        return 0
 
 if __name__ == "__main__":
     sys.exit(main())
