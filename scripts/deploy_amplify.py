@@ -108,6 +108,29 @@ def deploy_zip(amplify_client, app_id, branch_name, zip_path):
     raise TimeoutError("Amplify deployment timed out after 3 minutes.")
 
 def main():
+    config_path = os.path.join(FRONTEND_DIR, "config.js")
+    config_existed_before = os.path.exists(config_path)
+    generate_script = os.path.abspath(os.path.join(os.path.dirname(__file__), "generate_config.js"))
+
+    # Validate required environment variables for generating config.js
+    control_api = os.environ.get("CONTROL_API_BASE", "").strip()
+    api_key = os.environ.get("API_KEY", "").strip()
+
+    if not config_existed_before:
+        if not control_api or not api_key:
+            print("[!] ERROR: Deploying frontend requires CONTROL_API_BASE and API_KEY environment variables.")
+            print("    Please set CONTROL_API_BASE and API_KEY before running deploy_amplify.py:")
+            print("      $env:CONTROL_API_BASE = 'https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod'")
+            print("      $env:API_KEY = '<your-control-api-key>'")
+            return 1
+
+        print(f"[*] Generating temporary frontend/config.js via {generate_script}...")
+        import subprocess
+        res = subprocess.run(["node", generate_script], capture_output=True, text=True)
+        if res.returncode != 0:
+            print(f"[!] ERROR generating config.js: {res.stderr}")
+            return 1
+
     session = boto3.Session(region_name=REGION)
     amplify_client = session.client("amplify")
 
@@ -129,6 +152,13 @@ def main():
                 os.remove(zip_path)
             except Exception:
                 pass
+        # Clean up config.js if it was generated specifically for this deploy
+        if not config_existed_before and os.path.exists(config_path):
+            try:
+                os.remove(config_path)
+                print("[*] Cleaned up temporary frontend/config.js")
+            except Exception as e:
+                print(f"[!] Warning: Failed to clean up temporary config.js: {e}")
 
 if __name__ == "__main__":
     sys.exit(main())

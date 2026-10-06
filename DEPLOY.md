@@ -66,9 +66,27 @@ If you prefer to inspect, customize, or execute individual steps manually, follo
 
 ## AWS Amplify Hosting Deployment & Environment Variables
 
-When deploying the frontend via AWS Amplify Hosting (e.g. connected to your GitHub repository), `frontend/config.js` is automatically generated during the build phase (`amplify.yml`) using `scripts/generate_config.js`.
+Fuse supports two deployment paths to AWS Amplify Hosting:
 
-Configure the following environment variables in the **AWS Amplify Console > App settings > Environment variables**:
+### Path A: Manual API Deployment (`scripts/deploy_amplify.py`)
+When deploying directly from your local terminal or CLI without linking GitHub branches:
+1. Export the control plane environment variables:
+   ```bash
+   export CONTROL_API_BASE="https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod"
+   export API_KEY="<your-control-api-key>"
+   export TARGET_API_URL="https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items"
+   export OPERATOR_PASSWORD="<your-operator-password>"
+   ```
+2. Run the deployment script:
+   ```bash
+   python scripts/deploy_amplify.py
+   ```
+`deploy_amplify.py` generates a temporary `frontend/config.js` via `scripts/generate_config.js`, bundles `frontend/` into a ZIP archive, streams it to AWS Amplify via pre-signed S3 URL, triggers the deployment job, and immediately cleans up the local `config.js` to prevent accidental commits.
+
+### Path B: Git-Connected Continuous Deployment (`amplify.yml`)
+When linking your GitHub repository to AWS Amplify Hosting in the AWS Console:
+- Amplify executes the build steps in [`amplify.yml`](amplify.yml) which runs `node scripts/generate_config.js`.
+- Configure the environment variables in **AWS Amplify Console > App settings > Environment variables**:
 
 | Variable | Description | Example / Source |
 |---|---|---|
