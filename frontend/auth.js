@@ -156,6 +156,12 @@
         <div class="lock-title">FUSE SENTINEL</div>
         <div class="lock-sub">${supabaseClient ? 'Sign in with your team credentials' : 'Autonomous Cost Guardrail Console'}</div>
         
+        ${(!PASSWORD && !supabaseClient) ? `
+        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; font-size: 11.5px; color: #fbbf24; text-align: left; line-height: 1.45;">
+          <strong>Configuration Notice:</strong> <code>config.js</code> is missing or <code>OPERATOR_PASSWORD</code> is unconfigured.<br>
+          <span style="opacity: 0.85;">For AWS Amplify redeploys, generate <code>config.js</code> during the build phase from environment variables, or deploy <code>config.js</code> from <code>config.example.js</code>.</span>
+        </div>` : ''}
+
         <input class="lock-input" type="password" id="lock-pw" placeholder="${supabaseClient ? 'Password' : 'Enter Operator Password'}" />
         <button class="lock-btn" id="lock-submit">Unlock Console &rarr;</button>
         <div class="lock-error" id="lock-err">Invalid password. Check config.js</div>

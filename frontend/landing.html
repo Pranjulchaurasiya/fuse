@@ -1902,8 +1902,15 @@
         }, 10);
         const errAlert = document.getElementById("modal-error-alert");
         const succAlert = document.getElementById("modal-success-alert");
-        if (errAlert) errAlert.style.display = "none";
         if (succAlert) succAlert.style.display = "none";
+        if (!OPERATOR_PASSWORD) {
+          if (errAlert) {
+            errAlert.innerHTML = "<strong>Configuration notice:</strong> <code>config.js</code> was not found or <code>OPERATOR_PASSWORD</code> is unconfigured.<br><span style='font-size:11px;opacity:0.85;'>On AWS Amplify, ensure <code>config.js</code> is generated in your build settings.</span>";
+            errAlert.style.display = "block";
+          }
+        } else if (errAlert) {
+          errAlert.style.display = "none";
+        }
       };
 
       window.closeLoginModal = function () {
@@ -1931,7 +1938,7 @@
         if (!OPERATOR_PASSWORD) {
           if (succAlert) succAlert.style.display = "none";
           if (errAlert) {
-            errAlert.innerText = "OPERATOR_PASSWORD is not set in config.js. Configure it to unlock.";
+            errAlert.innerHTML = "<strong>Configuration notice:</strong> <code>config.js</code> was not found or <code>OPERATOR_PASSWORD</code> is unconfigured.<br><span style='font-size:11px;opacity:0.85;'>On AWS Amplify, ensure <code>config.js</code> is generated in your build settings.</span>";
             errAlert.style.display = "block";
           }
           return;
