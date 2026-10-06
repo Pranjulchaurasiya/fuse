@@ -28,7 +28,7 @@ REGION = os.environ.get('AWS_REGION', 'ap-south-1')
 TENANTS_TABLE = os.environ.get('TENANTS_TABLE', 'Fuse_Tenants')
 CF_TEMPLATE_URL = os.environ.get(
     'CF_TEMPLATE_URL',
-    'https://fuse-onboarding-templates.s3.ap-south-1.amazonaws.com/fuse-cross-account-role.yaml'
+    'https://fuse-onboarding-templates-515903395012.s3.ap-south-1.amazonaws.com/fuse-cross-account-role.yaml'
 )
 
 dynamodb = boto3.resource('dynamodb', region_name=REGION)

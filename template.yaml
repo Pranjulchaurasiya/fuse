@@ -452,7 +452,7 @@ Resources:
       Environment:
         Variables:
           TENANTS_TABLE: !Ref FuseTenantsTable
-          CF_TEMPLATE_URL: !Sub 'https://fuse-onboarding-templates.s3.${AWS::Region}.amazonaws.com/fuse-cross-account-role.yaml'
+          CF_TEMPLATE_URL: !Sub 'https://fuse-onboarding-templates-${AWS::AccountId}.s3.${AWS::Region}.amazonaws.com/fuse-cross-account-role.yaml'
       Policies:
         - AWSLambdaBasicExecutionRole
         - Version: '2012-10-17'
