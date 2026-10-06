@@ -3,9 +3,10 @@
 > **An autonomous, context-aware circuit breaker and surgical WAF guardrail for serverless APIs powered by Amazon Bedrock, EventBridge, DynamoDB, AWS WAFv2, and Cross-Account IAM.**  
 > Created by **Pranjul Chaurasiya** ([@pranjul_chaurasiya](https://github.com/Pranjulchaurasiya))
 
-[Live Platform](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Customer Onboarding](frontend/onboarding.html) &bull; [Demo Walkthrough](https://youtu.be/UWzPBdO63ek) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
+[Live Platform](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; [Customer Onboarding](https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html) &bull; [Demo Walkthrough](https://youtu.be/UWzPBdO63ek) &bull; [Architecture Spec](ARCHITECTURE.md) &bull; [AWS Builder Center Post](docs/blog-post.md)
 
 [![Live Console](https://img.shields.io/badge/Live_Console-AWS_Amplify_Hosting_(HTTPS)-blue?style=for-the-badge&logo=awsamplify)](https://main.d1hndpgpwb40h8.amplifyapp.com)
+[![CI/CD Validation](https://img.shields.io/badge/CI%2FCD-GitHub_Actions_Gated-brightgreen?style=for-the-badge&logo=githubactions)](https://github.com/Pranjulchaurasiya/fuse/actions/workflows/deploy.yml)
 [![Product Walkthrough](https://img.shields.io/badge/Walkthrough-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/UWzPBdO63ek)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
@@ -15,7 +16,7 @@
 
 ## Live Platform & Verification
 - **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Protected via Operator Session Gate)*
-- **Customer Onboarding**: [frontend/onboarding.html](frontend/onboarding.html) &mdash; 1-click Cross-Account IAM CloudFormation onboarding without sharing any AWS credentials.
+- **Customer Onboarding (Live)**: [https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html](https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html) &mdash; 1-click Cross-Account IAM CloudFormation onboarding without sharing any AWS credentials.
 - **Product Walkthrough (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) &mdash; full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and surgical WAF mitigation.
 - **Every AWS resource ID in this README is real and independently checkable** &mdash; see Section 05 for exact names/IDs
 - **AWS Builder Center Post**: [docs/blog-post.md](docs/blog-post.md)
@@ -225,6 +226,11 @@ make build
 make validate
 make deploy
 ```
+
+### Gated CI/CD Pipeline (GitHub Actions)
+Fuse enforces automated serverless safety and gated production deployments via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+* **Pull Requests**: Automatically triggers CFN linting (`cfn-lint`), SAM template validation (`sam validate --lint`), and automated Python unit tests (`scripts/test_*.py`). PRs cannot trigger cloud mutation.
+* **Production Deployment**: Push to `main` executes `sam build`, deploys SAM templates, and synchronizes the frontend to AWS Amplify. Deploy jobs are gated behind the GitHub `production` environment with manual approval requirements to prevent unauthorized infrastructure mutations.
 
 ---
 
