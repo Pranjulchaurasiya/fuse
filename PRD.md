@@ -40,28 +40,29 @@ retry-loop bug.
 - Incident log visible in a simple dashboard
 - AWS Builder Center blog post documenting the build (bonus prize track)
 
-## In scope
-- Request-volume based detection (API Gateway `Count` metric)
-- Deploy-heartbeat context (custom DynamoDB table, not CloudTrail lookups)
-- Bedrock-based classification with a structured prompt
-- Single remediation action: API Gateway stage throttle to zero
-- Dev/staging auto-execute; prod approval gate (DynamoDB flag + one endpoint)
-- Incident log + minimal dashboard
+## In scope (Implemented & Shipped)
+- Request-volume based detection (API Gateway `Count` metric + CloudWatch logs)
+- Deploy-heartbeat context (custom DynamoDB table `Deployments`)
+- Deterministic Z-score & caller dominance pre-filter (fast math gate)
+- Bedrock-based narrative enrichment using Converse API with `toolConfig`
+- Surgical remediation: AWS WAFv2 regional IP Set (`fuse-blocked-ips`) drops bad caller IP with HTTP 403
+- Automated 15-minute cooldown recovery (unblocks stale IPs via EventBridge scan)
+- Cross-account customer onboarding via CloudFormation template (`fuse-cross-account-role.yaml`)
+- Operator dashboard on AWS Amplify with session auth gate
+- Developer CLI (`cli/fuse.py`) and Model Context Protocol server (`mcp_server.py`)
 
-## Out of scope (explicitly — do not build, even if "quick to add")
-- Multi-resource remediation (EC2, Lambda concurrency, IAM)
-- Real billing-metric integration (`EstimatedCharges` — too laggy to be
-  useful for a demo)
-- Kinesis/Firehose streaming pipelines
-- API Gateway caching and cache-hit/miss reasoning
-- Cedar policy engine, sub-agents, sandboxed code execution
-- Multi-tenant support, user accounts/auth beyond a single approval token
-- Slack/WhatsApp integration (nice-to-have only if Day 4 has slack — pun
-  intended — in the schedule)
+## Evolution from Initial Prototype
+- **From Stage Throttle to WAF IP Blocking**: The original prototype set API Gateway `RateLimit -> 0`, which worked for testing but took down the whole API for paying customers. The current build replaces global throttling with regional AWS WAFv2 IP Sets. Offending IPs get dropped at the edge; healthy traffic continues uninterrupted.
+- **From Sync Bedrock to Deterministic Gate**: Initially, Bedrock was in the critical path for every check. To guarantee sub-second decision times and eliminate LLM latency/outage risks, the Poller evaluates Z-scores and caller concentration deterministically in Python. Bedrock runs asynchronously for structured post-incident analysis.
+
+## Competitive Reality & Technical Tradeoffs
+- **AWS Budgets & Cost Anomaly Detection**: AWS Budgets does support automated actions (IAM policies, SCPs, stopping EC2/RDS). The practical issue is data freshness: Cost and Usage Reports (CUR) and billing metrics lag reality by 6 to 24+ hours. When an infinite client loop fires 500 req/s, automated actions that run tomorrow are useless.
+- **AWS WAF Rate-Based Rules**: WAF supports 1, 2, 5, or 10-minute sliding windows (down to 10 requests). The limitation is that they are stateless window counters. A slow-burn loop (e.g., 40 req/min from a rogue worker) stays well under standard rate limits but costs thousands over an 8-hour stretch. Native WAF rules also have no concept of deployment events or caller diversity.
+- **Cloudflare Rate Limiting**: While Cloudflare supports Partial (CNAME) setups without delegating full DNS, it still runs as an inline reverse proxy. Every user request takes an extra network hop to an external edge network. Fuse runs out-of-band on AWS, adding 0ms of latency to normal requests.
+- **Shared IP / NAT Tradeoff**: Surgical `/32` blocking is reliable for machine-to-machine traffic, cron jobs, and webhooks. If abusive traffic comes through a shared corporate proxy, NAT gateway, or carrier network, blocking that IP affects everyone behind that IP. The production roadmap addresses this by combining WAF IP blocking with per-API-key and JWT-claim throttling.
+- **Telemetry Latency Reality**: CloudWatch API Gateway metrics publish in 1-minute aggregation buckets. Total time-to-block for out-of-band analysis is ~60 to 70 seconds. To buffer against extreme instant floods during that 60-second window, Fuse pairs with a native Tier-1 WAF rate rule (`fuse-emergency-burst-cap`).
 
 ## Constraints
-- Solo build, 4 days (Sept 17–20, 2026)
-- Must use AWS services as core logic, not just hosting (mandatory to win
-  any prize per hackathon rules)
-- Demo is video-only — no live demo in front of judges — so the recorded
-  scenario must be bulletproof and pre-scripted
+- Solo build, Bharat Builds Tour (Ship It track)
+- Core compute, telemetry, and remediation must remain 100% native AWS
+- Infrastructure managed declaratively via AWS SAM (`template.yaml`)

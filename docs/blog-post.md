@@ -1,4 +1,4 @@
-# Fuse: The Cognitive Circuit Breaker for Your AWS Bill
+# Fuse: The Surgical Cloud Cost Guardrail & WAF Circuit Breaker
 
 *Built by [Pranjul Chaurasiya](https://github.com/Pranjulchaurasiya) for First Commit — Bharat Builds Tour 2026 (Ship It Track).*  
 *Live Console: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)*  
@@ -7,188 +7,155 @@
 
 ---
 
-## 1. The $5,000 Infinite Loop: Why Serverless Needs Cognitive Protection
+## 1. The $5,000 Retry Loop: The Hidden Risk in Serverless
 
-Serverless architectures built on **AWS Lambda**, **Amazon API Gateway**, and **Amazon DynamoDB** give engineering teams instant scalability and pay-per-use economics. However, automatic scaling has a dangerous operational blind spot: **unbounded financial liability**.
+Serverless architectures built on **Amazon API Gateway**, **AWS Lambda**, and **Amazon DynamoDB** give teams instant scalability and pay-per-request economics. But auto-scaling has an operational blind spot: **unbounded financial liability**.
 
-A subtle bug in a client SDK, an exponential backoff algorithm without jitter, or a recursive agent loop can blast thousands of requests per second into your API. Because AWS serverless primitives scale seamlessly to meet demand, the platform will process every single request—leaving you with a massive cloud bill by morning.
+A client SDK missing jitter, a broken retry loop on a 500 error, or an autonomous LLM agent stuck in recursion can hit an API with hundreds of requests per second. Because AWS serverless primitives scale automatically to meet demand, the system processes every call. The developer only finds out hours later when checking billing alerts or waking up to a four-figure charge.
 
-### The Dilemma of Static Alarms
-The conventional defense is a static CloudWatch alarm:  
-`If Request Count > 1,000 over 5 minutes, trigger an alert.`
+### Why Standard Defenses Fall Short
 
-In real-world production, this creates an impossible trade-off:
-1. **False Positives (The Flash Sale Outage)**: When your marketing team launches a campaign and 1,000 legitimate, paying customers hit checkout simultaneously, a static threshold trips and cuts off your highest-value traffic.
-2. **Alert Lag**: By the time an on-call engineer gets paged, logs into the AWS console, reviews metrics, and manually applies stage throttling, thousands of dollars have already been burned.
+1. **AWS Budgets & Cost Anomaly Detection**: AWS Budgets does support automated actions (like applying IAM deny policies or stopping EC2 instances). The real bottleneck is data freshness: Cost and Usage Reports (CUR) and billing metrics lag reality by 6 to 24+ hours. If a runaway loop is running at 500 req/s, an automated action that triggers tomorrow morning arrives long after the budget is gone.
+2. **Static CloudWatch Alarms (`Count > 1,000`)**: A static volume threshold can't differentiate between 1,000 unique buyers during a flash sale and 1 rogue client hitting a failing endpoint 1,000 times. If you wire a static alarm to shut down the API stage, you take down the service for all paying users.
+3. **AWS WAF Native Rate-Based Rules**: AWS WAF supports 1, 2, 5, or 10-minute sliding windows (down to 10 requests per window). But native WAF rules are stateless counters within those fixed windows. A slow-burn loop (e.g., 40 req/min from a background worker) stays comfortably under static rate limits while racking up thousands in compute and database write units over an 8-hour stretch. Native rules also have no visibility into deployment events or client diversity.
+4. **Inline API Gateways & Edge Proxies (e.g., Cloudflare)**: While edge proxies provide rate-limiting, they sit inline in front of your traffic. Even with partial CNAME setups, every API request incurs an extra network transit hop to an external network.
 
-To solve this, I built **Fuse**—an autonomous, context-aware circuit breaker that uses **Amazon Bedrock** to distinguish between authentic traffic surges and destructive runaway loops in under 60 seconds.
+To solve this without adding request latency or taking down entire APIs, I built **Fuse**: an autonomous, out-of-band circuit breaker that uses deterministic statistical analysis, AWS WAFv2, and Amazon Bedrock to isolate runaway caller IPs at the edge in ~60 seconds.
 
 ---
 
-## 2. Architecture & Design Principles
+## 2. Architecture & How It Works
 
-Fuse operates completely out-of-band to introduce **zero latency** to your user-facing request path.
+Fuse operates entirely out-of-band. Healthy API requests go straight to API Gateway with **0ms added proxy latency**.
 
 ```
-                    ┌────────────────────────────┐
-                    │  EventBridge (1-min rate)   │
-                    └─────────────┬──────────────┘
+                   ┌──────────────────────────────┐
+                   │  EventBridge (1-min rule)    │
+                   └──────────────┬───────────────┘
                                   │
                                   ▼
-┌─────────────────┐       ┌───────────────┐        ┌──────────────────┐
-│ CloudWatch Logs │◄──────┤ guardrail-    │───────►│ DynamoDB         │
-│ & Metrics       │       │ poller        │        │ (Deployments)    │
-└─────────────────┘       └───────┬───────┘        └──────────────────┘
-                                  │ (telemetry snapshot)
-                                  ▼
+┌──────────────────┐      ┌───────────────┐        ┌──────────────────┐
+│ CloudWatch Logs  │◄─────┤ guardrail-    │───────►│ DynamoDB         │
+│ & API GW Metrics │      │ poller        │        │ (Deployments)    │
+└──────────────────┘      └───────┬───────┘        └──────────────────┘
+                                  │
+                                  ├────────────────────────┐
+                                  │ (Deterministic anomaly)│ (Async enrichment)
+                                  ▼                        ▼
                           ┌───────────────┐        ┌──────────────────┐
-                          │ guardrail-    │◄──────►│ Amazon Bedrock   │
-                          │ reasoner      │        │ (Converse API)   │
-                          └───────┬───────┘        └──────────────────┘
-                                  │
-                                  ▼
-                      ┌───────────────────────┐
-                      │ DynamoDB (Incidents)  │
-                      └───────────────────────┘
-                                  │
-                 ┌────────────────┴────────────────┐
-                 ▼ (dev / staging: Auto)           ▼ (prod: Human Gate)
-        ┌─────────────────┐               ┌─────────────────┐
-        │ guardrail-      │               │ DynamoDB        │
-        │ remediator      │               │ (ApprovalQueue) │
-        └────────┬────────┘               └────────┬────────┘
-                 │                                 │
-                 ▼                                 ▼ (Operator Approves)
-        ┌─────────────────┐               ┌─────────────────┐
-        │ API Gateway     │◄──────────────┤ guardrail-      │
-        │ Stage Throttle  │               │ approve-action  │
-        │ (RateLimit → 0) │               └─────────────────┘
-        └─────────────────┘
+                          │ guardrail-    │        │ guardrail-       │
+                          │ remediator    │        │ reasoner         │
+                          └───────┬───────┘        └────────┬─────────┘
+                                  │                         │ (Converse API)
+                                  ▼                         ▼
+                          ┌───────────────┐        ┌──────────────────┐
+                          │ AWS WAFv2     │        │ Amazon Bedrock   │
+                          │ IP Set (/32)  │        │ (Nova Micro)     │
+                          └───────┬───────┘        └────────┬─────────┘
+                                  │                         │
+                                  ▼                         ▼
+                          ┌───────────────┐        ┌──────────────────┐
+                          │ API Gateway   │◄───────┤ DynamoDB         │
+                          │ (Drops IP 403)│        │ (Incidents Log)  │
+                          └───────────────┘        └──────────────────┘
 ```
 
-### Tech Stack
-* **Compute**: AWS Lambda (Python 3.12, boto3)
-* **Scheduling**: Amazon EventBridge (1-minute rate rule)
-* **Telemetry**: Amazon CloudWatch (Metrics & Logs)
-* **Cognitive Engine**: Amazon Bedrock (Converse API with `toolConfig`, Claude 3.5 Haiku / Nova Micro)
-* **State & Audit**: Amazon DynamoDB (On-Demand tables: `Deployments`, `Incidents`, `ApprovalQueue`)
-* **Control Plane API**: Amazon API Gateway (REST API with API Key auth and scoped CORS)
-* **Frontend**: AWS Amplify Hosting (Vanilla HTML/CSS/JS precision console)
-* **Infra: AWS SAM**: Infrastructure provisioned declaratively via `template.yaml` and `samconfig.toml`
+### The Telemetry & Remediation Flow
 
-### Key Architectural Pillars:
-1. **Single Responsibility Lambdas**: Telemetry ingestion (`poller`), classification (`reasoner`), remediation (`remediator`), and approval handling (`approve-action`) are strictly decoupled.
-2. **Decoupled Control Plane**: The operator console and incident APIs run on an isolated API Gateway (`guardrail-control-api`). Even if a compromised target API is throttled to 0 requests/sec, operators never lose dashboard access.
-3. **Deployment Heartbeat Reconciliation**: CI/CD pipelines write a lightweight release heartbeat to DynamoDB (`Deployments`). When Bedrock evaluates a traffic surge, it factors in recent code releases to prevent false alarms during planned rollouts.
-4. **Fail-Closed Safety**: If Bedrock encounters rate limits or upstream timeouts, the system safely falls back to conservative protection (`RUNAWAY` classification with `is_fallback: true`).
-5. **Declarative Serverless Infrastructure**: Core infrastructure is managed as code via AWS SAM (`template.yaml`), ensuring reproducible deployments and clean stack isolation.
-
-### Multi-Tenant SaaS Foundation & Cross-Account Security
-Beyond the single-account demo architecture, Fuse includes an architectural foundation for multi-tenant SaaS governance. To safely inspect and remediate workloads across external customer AWS accounts without storing permanent credentials, customer onboarding is automated via a dedicated CloudFormation template (`infra/cloudformation/fuse-customer-onboarding.yaml`).
-
-This template provisions a customer-side cross-account IAM role with strict least-privilege permissions. Crucially, the trust policy enforces a mandatory, tenant-unique `sts:ExternalId` condition string. By validating this cryptographic `ExternalId` during every `sts:AssumeRole` handshake, Fuse completely eliminates the Confused Deputy vulnerability—guaranteeing that in a multi-tenant SaaS foundation, one customer can never trick the central control plane into manipulating another tenant's API Gateway stages.
+1. **Observe (60s Cadence)**: Amazon EventBridge invokes `guardrail-poller` once per minute. The poller pulls the `Count` metric from CloudWatch for the target API Gateway and fetches recent log lines from the CloudWatch Log Group.
+2. **Evaluate (Deterministic Python Math)**: The poller calculates a rolling 15-minute baseline, standard deviation, and statistical Z-score:
+   $$Z = \frac{\text{Current Count} - \text{Baseline}}{\sigma}$$
+   If $Z \ge 2.5$ and volume exceeds a minimum threshold (10 req/min), an anomaly is confirmed. The poller then checks caller concentration: if a single IP accounts for $>85\%$ of the traffic (or unique caller count $\le 2$), it flags a `RUNAWAY` loop.
+3. **Isolate (AWS WAFv2 IP Set)**: The poller immediately calls `guardrail-remediator`. The remediator adds the offending IP (`/32`) into the regional AWS WAFv2 IP Set (`fuse-blocked-ips`) associated with the API Gateway Web ACL. Subsequent requests from that specific IP receive an immediate **HTTP 403 Forbidden** at the edge. Legitimate users continue getting HTTP 200 responses uninterrupted.
+4. **Enrich (Async Amazon Bedrock)**: Non-blocking post-incident enrichment invokes `guardrail-reasoner` asynchronously. Using the Bedrock Converse API with structured `toolConfig`, Amazon Nova Micro generates a concise forensic explanation written directly into DynamoDB for operator review.
+5. **Auto-Recover (15-Minute Cooldown)**: During each run, the poller scans DynamoDB for active IP blocks older than 15 minutes. Stale blocks trigger an unblock payload to the remediator, releasing the IP from WAF so transient bugs don't become permanent bans.
 
 ---
 
-## 3. Deterministic AI Reasoning with Bedrock Converse API
+## 3. Real-World Latency & The Edge Defense
 
-One of the common hurdles with LLMs in operational loops is non-deterministic output: models returning markdown fluff or unexpected JSON keys.
+Here is the realistic timing breakdown of how out-of-band remediation performs against sudden traffic:
 
-Fuse eliminates this using the **Amazon Bedrock Converse API** with `toolConfig` and forced tool choice (`classify_anomaly`). This guarantees that Bedrock responds strictly according to a typed schema:
+| Step | Subsystem | Typical Latency | What Happens |
+| :--- | :--- | :--- | :--- |
+| **Tier 1: Emergency Burst** | Native AWS WAF Rate Rule | **< 1s inline** | Catches extreme spikes (>500 req/5min) before metrics register. |
+| **Metric Ingestion** | CloudWatch API GW `Count` | **~60s aggregation** | EventBridge polls `get_metric_data` on a 1-minute cadence. |
+| **Log Extraction** | CloudWatch Logs Filter | **150ms – 400ms** | Bounded `startTime` and log pattern filtering avoid timeouts. |
+| **Statistical Analysis** | Poller Lambda (Python) | **< 50ms** | Evaluates volume floor, Z-score, and caller concentration. |
+| **WAF Mutation** | Remediator Lambda | **~250ms** | Calls `wafv2.update_ip_set` using optimistic locking (`LockToken`). |
+| **Edge Sync** | AWS Regional WAF | **2s – 4s** | Syncs rule across regional points of presence. |
+
+**Total Time-to-Block:** **~62 to 65 seconds.**
+
+Against an unconstrained runaway loop firing 500 requests per second, capping execution within ~60 seconds limits the total cost to **~$1 to $3**, compared to hundreds or thousands of dollars accumulated overnight before manual intervention.
+
+### The Shared IP / NAT Boundary
+Surgical `/32` blocking works cleanly for machine-to-machine APIs, webhooks, and rogue developer scripts. However, if abusive traffic originates from an IP shared behind a corporate NAT gateway or Apple Private Relay, blocking that `/32` will temporarily affect other users sharing that egress IP. In the production roadmap, we plan to pair WAF IP blocking with per-API-key and JWT-claim throttling to isolate authenticated users individually.
+
+---
+
+## 4. Multi-Tenant Cross-Account IAM Architecture
+
+For teams running multi-account setups or using Fuse as an internal platform service, Fuse never asks for static AWS access keys.
+
+```
+Customer AWS Account                     Fuse Engine (515903395012)
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│  fuse-cross-account-role     │◄───────┤  sts:AssumeRole              │
+│  - CloudWatch Read           │        │  (ExternalId validated)      │
+│  - WAFv2 IP Set Write        │        │                              │
+└──────────────────────────────┘        └──────────────────────────────┘
+```
+
+1. **1-Click CloudFormation Stack**: Customers deploy `fuse-cross-account-role.yaml` in their AWS account.
+2. **Confused Deputy Prevention**: The trust policy requires a tenant-unique `sts:ExternalId` generated during onboarding. Fuse validates this string on every `assume_role` call.
+3. **Scoped Least Privilege**: The role can only read CloudWatch metrics/logs and modify WAF IP sets. It has no access to data storage, IAM roles, or Lambda source code.
+
+---
+
+## 5. Structured AI Output with Bedrock Converse
+
+To avoid JSON parsing errors or unpredictable LLM output in operations, Fuse uses the **Amazon Bedrock Converse API** with a strict `toolConfig` schema:
 
 ```python
-import boto3
-
-bedrock = boto3.client("bedrock-runtime", region_name="ap-south-1")
-
 CLASSIFY_TOOL_SPEC = {
-    "tools": [
-        {
-            "toolSpec": {
-                "name": "classify_anomaly",
-                "description": "Classifies whether an API traffic surge is legitimate or a runaway cost loop.",
-                "inputSchema": {
-                    "json": {
-                        "type": "object",
-                        "properties": {
-                            "classification": {
-                                "type": "string",
-                                "enum": ["NORMAL", "RUNAWAY"]
-                            },
-                            "confidence": {
-                                "type": "number"
-                            },
-                            "explanation": {
-                                "type": "string",
-                                "description": "Concise 1-2 sentence engineering rationale."
-                            }
-                        },
-                        "required": ["classification", "confidence", "explanation"]
-                    }
+    "tools": [{
+        "toolSpec": {
+            "name": "classify_anomaly",
+            "description": "Classifies whether an API traffic surge is legitimate or a runaway cost loop.",
+            "inputSchema": {
+                "json": {
+                    "type": "object",
+                    "properties": {
+                        "classification": {"type": "string", "enum": ["NORMAL", "RUNAWAY"]},
+                        "confidence": {"type": "number"},
+                        "explanation": {"type": "string"}
+                    },
+                    "required": ["classification", "confidence", "explanation"]
                 }
             }
         }
-    ],
+    }],
     "toolChoice": {"tool": {"name": "classify_anomaly"}}
 }
 ```
 
-### Multi-Dimensional Context Evaluation
-Instead of relying on request count alone, Fuse passes Bedrock four operational dimensions:
-* **Caller Diversity**: Are incoming requests distributed across hundreds of unique IP addresses, or originating from a single runaway client?
-* **Traffic Velocity Delta**: How steep is the surge relative to the rolling 15-minute moving average?
-* **Payload Variance**: Are requests carrying diverse query parameters, or byte-for-byte identical retry loops?
-* **Release Correlation**: Was a new build deployed within the last 15 minutes?
-
-**The Result:**
-* **Legitimate Surge** (e.g., 35 unique callers, varied payloads) &rarr; `NORMAL` (Confidence: 0.98, No throttle).
-* **Runaway Loop** (e.g., 40 rapid requests from 1 caller, repeated errors) &rarr; `RUNAWAY` (Confidence: 0.99, Circuit tripped).
-
----
-
-## 4. Autonomous Containment vs. Human-in-the-Loop Safety
-
-How a circuit breaker reacts must depend on the environment:
-
-### Dev / Staging (Autonomous Instant Cutoff)
-In non-production environments, cost velocity is the priority. The Reasoner directly triggers `guardrail-remediator`, which updates the target API Gateway stage method settings:
-* `throttling/rateLimit` &rarr; `0`
-* `throttling/burstLimit` &rarr; `0`
-
-Subsequent requests immediately receive `HTTP 429 Too Many Requests` directly at the API Gateway edge, instantly halting downstream Lambda invocations and DynamoDB write costs.
-
-### Production (Human-in-the-Loop Approval Gate)
-In production, dropping an API stage to 0 requests/sec requires human validation. 
-1. The Reasoner logs the incident into the `ApprovalQueue` table as `PENDING_APPROVAL`.
-2. The **Fuse Console** (hosted on AWS Amplify) surfaces an amber alert with Bedrock's synthesized explanation.
-3. An on-call engineer reviews the rationale and clicks **Approve Circuit Trip**.
-4. The control plane invokes `guardrail-approve-action` to safely execute the throttle and log the audit trail.
-
-### Idempotent Remediation
-To prevent race conditions during rapid alerting, `guardrail-remediator` inspects current stage limits before applying patches. If the stage is already at `0 rps`, it returns `ALREADY_THROTTLED` with zero duplicate mutations.
-
----
-
-## 5. Live Edge Verification
-
-A core design principle of Fuse is **Independent Edge Observation**:
-> *Never trust internal Lambda success callbacks to declare an incident resolved. Verify from the outside in.*
-
-When Fuse executes a circuit trip, an independent edge prober tests the public API Gateway endpoint. The remediation is only marked complete once the regional edge returns a genuine `HTTP 429 Too Many Requests`.
+By forcing `toolChoice`, Bedrock returns structured JSON directly into `toolUse.input`, eliminating regex parsing or schema validation failures in production.
 
 ---
 
 ## 6. What We Learned Building Fuse
 
-1. **Structured Outputs are Essential**: Using Bedrock Converse API with forced tool schemas turns generative models into dependable, deterministic decision engines suitable for critical infrastructure.
-2. **Never Share Control Plane Infrastructure**: If your operator dashboard relies on the same API Gateway or VPC as the services you might need to shut down, you risk locking yourself out of your own emergency brakes.
-3. **Context Trumps Raw Thresholds**: High request volume is not a problem—monopolized single-caller volume during an error storm is. Contextual classification is the missing layer in cloud cost governance.
+1. **Keep LLMs Off the Critical Fast Path**: Generative models are great for synthesizing context and summarizing logs for humans, but deterministic Python math (standard deviations and caller concentration) is faster, cheaper, and more reliable for sub-second blocking decisions. Running Bedrock asynchronously gives us the best of both worlds: instant edge mitigation and rich audit logs.
+2. **Surgical Containment Beats Blunt Throttles**: Taking down an entire API Gateway stage during an incident stops the bleeding, but it creates a self-inflicted outage for good users. Modifying a WAF IP Set isolates the bad actor while preserving revenue flow for everyone else.
+3. **Decouple the Management Plane**: The operator console and incident APIs run on an independent API Gateway (`guardrail-control-api`). Even if a target workload is under attack, operators never lose dashboard visibility or control.
 
 ---
 
-## Resources & Live Links
+## Live Links & Verification
 
 * 🌐 **Live Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com)
-* 📺 **Demo Walkthrough Video**: [Watch on YouTube](https://youtu.be/UWzPBdO63ek)
-* 💻 **Source Code & Runbooks**: [GitHub Repository](https://github.com/Pranjulchaurasiya/fuse)
+* 📋 **Customer Onboarding**: [https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html](https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html)
+* 📺 **Demo Walkthrough Video (2m 58s)**: [Watch on YouTube](https://youtu.be/UWzPBdO63ek)
+* 💻 **Source Code**: [GitHub: Pranjulchaurasiya/fuse](https://github.com/Pranjulchaurasiya/fuse)
 * 📍 **AWS Region**: `ap-south-1` (Mumbai)
