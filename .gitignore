@@ -73,8 +73,12 @@ tmp/
 *.webp
 *.ass
 github_full_repo.png
-test_*
-scratch_video_build/
+# Media test scratch files
+test_speech.*
+test_*.mp3
+test_*.wav
+test_*.aac
+scripts/test_*_cues.py
 scratch_audio_build/
 scratch_real_voice_build/
 transcription.json
@@ -94,9 +98,10 @@ node_modules/
 # SAM build artifacts
 .aws-sam/
 
-# Frontend local configuration
+# Frontend local configuration & backups
 frontend/config.js
 config.js
+frontend/*.light.*
 
 # Terraform state files
 *.tfstate
