@@ -351,6 +351,10 @@ def fuse_status_resource() -> str:
     return json.dumps(status_data, indent=2)
 
 
-if __name__ == "__main__":
-    # Runs the stdio MCP server loop
+def main():
+    """Main entrypoint for CLI execution (`fuse-mcp`)."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

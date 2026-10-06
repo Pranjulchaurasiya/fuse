@@ -32,10 +32,58 @@ INCIDENTS_TABLE = os.environ.get('INCIDENTS_TABLE', 'Incidents')
 AWS_REGION = os.environ.get('AWS_REGION', 'ap-south-1')
 TARGET_API_ID = os.environ.get('TARGET_API_ID') # For backward compat
 TARGET_API_NAME = os.environ.get('TARGET_API_NAME', 'guardrail-demo-api')
+SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL', '')
+DISCORD_WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL', '')
 
 # Boto3 Clients
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 wafv2_client = boto3.client('wafv2', region_name=AWS_REGION)
+
+def send_webhook_alert(action, incident_id, blocked_ips, resource, reason=""):
+    """Dispatches real-time incident alert to Slack / Discord webhook."""
+    import urllib.request
+    import urllib.error
+
+    if not SLACK_WEBHOOK_URL and not DISCORD_WEBHOOK_URL:
+        return
+
+    is_block = (action == "BLOCK")
+    icon = "🚨" if is_block else "✅"
+    title = f"{icon} Fuse Circuit Breaker: IP {action}ED"
+    ips_str = ", ".join(blocked_ips) if blocked_ips else "N/A"
+    
+    # Slack formatting
+    slack_payload = {
+        "text": f"*{title}*\n*Incident ID:* `{incident_id}`\n*Resource:* `{resource}`\n*Target IPs:* `{ips_str}`\n*Reason:* {reason}\n*Mitigation:* Out-of-band WAFv2 rule enforced."
+    }
+
+    # Discord formatting
+    discord_payload = {
+        "embeds": [{
+            "title": title,
+            "color": 15158332 if is_block else 3066993, # Red or Green
+            "fields": [
+                {"name": "Incident", "value": incident_id, "inline": True},
+                {"name": "Resource", "value": resource, "inline": True},
+                {"name": "IPs", "value": ips_str, "inline": False},
+                {"name": "Reason", "value": reason or "Statistical Z-score spike", "inline": False}
+            ]
+        }]
+    }
+
+    for url, payload in [(SLACK_WEBHOOK_URL, slack_payload), (DISCORD_WEBHOOK_URL, discord_payload)]:
+        if url:
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    logger.info(f"Dispatched webhook alert to {url[:25]}... (HTTP {resp.status})")
+            except Exception as e:
+                logger.warning(f"Failed to deliver webhook alert: {e}")
+
 
 def update_incident_action(incident_id, action_taken, blocked_ips=None, resource=None, stage=None):
     """
@@ -218,6 +266,10 @@ def lambda_handler(event, context):
         
         # 5/4. Update Incidents table
         update_incident_action(incident_id, status, blocked_ips=processed_ips, resource=resource, stage=stage)
+
+        # 6. Dispatch real-time notification to Slack/Discord if configured
+        reason = payload.get('reason', '')
+        send_webhook_alert(action, incident_id, processed_ips, resource, reason=reason)
         
         return {
             "statusCode": 200,

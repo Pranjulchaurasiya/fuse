@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fuse-guardrail"
+version = "0.2.0"
+description = "Autonomous AWS Cost Guardrail & Real-Time Circuit Breaker with MCP support"
+readme = "README.md"
+authors = [{ name = "Pranjul Chaurasiya" }]
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "boto3>=1.34.0",
+    "mcp>=1.0.0",
+]
+requires-python = ">=3.10"
+
+[project.scripts]
+fuse-mcp = "mcp_server:main"
