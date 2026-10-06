@@ -108,3 +108,7 @@ frontend/*.light.*
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+
+# Local private docs & enterprise specs (never committed)
+*.local.md
+local_*.md
