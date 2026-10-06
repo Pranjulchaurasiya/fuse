@@ -1870,6 +1870,7 @@
       const SESSION_HOURS = 8;
 
       function isAuthed() {
+        if (!OPERATOR_PASSWORD) return false;
         try {
           const raw = localStorage.getItem(TOKEN_KEY);
           if (!raw) return false;
@@ -1927,6 +1928,15 @@
         const succAlert = document.getElementById("modal-success-alert");
         const pw = input.value.trim();
 
+        if (!OPERATOR_PASSWORD) {
+          if (succAlert) succAlert.style.display = "none";
+          if (errAlert) {
+            errAlert.innerText = "OPERATOR_PASSWORD is not set in config.js. Configure it to unlock.";
+            errAlert.style.display = "block";
+          }
+          return;
+        }
+
         if (pw === OPERATOR_PASSWORD) {
           localStorage.setItem(TOKEN_KEY, JSON.stringify({
             token: btoa(OPERATOR_PASSWORD),
@@ -1939,7 +1949,10 @@
           }, 450);
         } else {
           if (succAlert) succAlert.style.display = "none";
-          if (errAlert) errAlert.style.display = "block";
+          if (errAlert) {
+            errAlert.innerText = "Incorrect operator password. Please check your credentials.";
+            errAlert.style.display = "block";
+          }
           input.value = "";
           input.focus();
         }

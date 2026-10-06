@@ -17,5 +17,8 @@ const FUSE_CONFIG = {
   API_KEY: "replace-with-your-api-key",
 
   // Target monitored API URL for live circuit status probes
-  TARGET_API_URL: "https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items"
+  TARGET_API_URL: "https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items",
+
+  // Operator console password gate (demo-grade session gate)
+  OPERATOR_PASSWORD: "replace-with-your-operator-password"
 };

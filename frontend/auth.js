@@ -58,6 +58,7 @@
       const { data: { session } } = await supabaseClient.auth.getSession();
       return !!session;
     }
+    if (!PASSWORD) return false;
     try {
       const raw = localStorage.getItem(TOKEN_KEY);
       if (!raw) return false;
@@ -73,7 +74,7 @@
   }
 
   function demoLogin(password) {
-    if (password !== PASSWORD) return false;
+    if (!PASSWORD || !password || password !== PASSWORD) return false;
     localStorage.setItem(TOKEN_KEY, JSON.stringify({
       token: btoa(PASSWORD),
       expires: Date.now() + SESSION_HOURS * 3600 * 1000,
@@ -191,10 +192,18 @@
         }
       } else {
         // Standalone operator password fallback
+        if (!PASSWORD) {
+          errMsg.innerText = 'OPERATOR_PASSWORD is not set in config.js. Configure it to unlock.';
+          errMsg.style.display = 'block';
+          btn.disabled = false;
+          btn.innerText = 'Unlock Console →';
+          return;
+        }
         if (demoLogin(val)) {
           overlay.remove();
           addLogoutButton();
         } else {
+          errMsg.innerText = 'Invalid password. Check config.js';
           errMsg.style.display = 'block';
           btn.disabled = false;
           btn.innerText = 'Unlock Console →';
