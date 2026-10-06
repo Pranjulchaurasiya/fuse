@@ -14,7 +14,7 @@
 ---
 
 ## Live Platform & Verification
-- **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Console Gate: `fuse-operator-2024`)*
+- **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Protected via Operator Session Gate)*
 - **Customer Onboarding**: [frontend/onboarding.html](frontend/onboarding.html) &mdash; 1-click Cross-Account IAM CloudFormation onboarding without sharing any AWS credentials.
 - **Product Walkthrough (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) &mdash; full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and surgical WAF mitigation.
 - **Every AWS resource ID in this README is real and independently checkable** &mdash; see Section 05 for exact names/IDs
@@ -38,7 +38,7 @@ Observe → Reason & Classify → Isolate (WAF IP Block) → Auto-Recover (Coold
 * **Onboard**: Customer launches `fuse-cross-account-role.yaml` in their AWS account, granting scoped read (CloudWatch) and write (WAFv2 IP Set) permissions to Fuse's account (`515903395012`).
 * **Observe**: EventBridge triggers `guardrail-poller` every 60s, querying tenant CloudWatch metrics and log streams out-of-band.
 * **Reason**: Anomaly Z-score & caller dominance tests run deterministically; Bedrock provides asynchronous, structured narrative enrichment.
-* **Isolate**: Offending IP addresses are dynamically added to a regional AWS WAFv2 IP Set, surgically dropping runaway loops with HTTP 403 while keeping 100% legitimate traffic flowing.
+* **Isolate**: Offending IP addresses are dynamically added to a regional AWS WAFv2 IP Set, surgically dropping runaway loops with HTTP 403 while allowing traffic from other caller IPs to proceed uninterrupted (shared NAT/VPN IP pooling caveat applies).
 * **Auto-Recover**: Stale IP blocks automatically expire and unblock after a configurable cooldown window (default: 15 min).
 
 ---
@@ -58,7 +58,7 @@ Traditional CloudWatch static alarms (*"if requests > 100/min then alarm"*) crea
 | **No Guardrail** | Normal operation | Thousands of dollars billed in minutes | Unbounded financial liability |
 | **Naive Static Alarm** (`Count > 100`) | **Tripped & Throttled (False Outage)** | Throttled (after alert delay) | Kills revenue during marketing launches |
 | **Global Stage Throttle** | Preserves system | Kills ALL users (Collateral Damage) | Total outage for paying customers |
-| **Fuse (Cognitive WAF Breaker)** | **Passed (Baseline preserved)** | **Offending IP Blocked in WAF** | **Surgical isolation & zero collateral damage** |
+| **Fuse (Cognitive WAF Breaker)** | **Passed (Baseline preserved)** | **Offending IP Blocked in WAF** | **Surgical IP-level isolation (shared NAT/VPN caveat applies)** |
 
 **Fuse** solves this by evaluating multi-dimensional context: **caller diversity**, **traffic deltas**, and **deployment heartbeats** with deterministic statistical analysis and Amazon Bedrock, dropping runaway caller IPs at the **AWS WAFv2** edge in seconds without disrupting legitimate traffic.
 
@@ -112,11 +112,11 @@ flowchart TD
 ### 1. Zero Credential Sharing (Cross-Account IAM Roles)
 Customers never provide IAM access keys. Onboarding generates a unique `ExternalId` and a 1-click CloudFormation template (`infra/cloudformation/fuse-cross-account-role.yaml`). Fuse accesses tenant telemetry via short-lived, 15-minute `sts:AssumeRole` sessions strictly scoped to read CloudWatch and update WAF IP Sets.
 
-### 2. Surgical WAF Isolation (Zero Collateral Outage)
+### 2. Surgical WAF Isolation (Targeted Edge Containment)
 Unlike crude stage throttles (`RateLimit -> 0`) that shut down entire APIs and punish paying customers during an incident, Fuse acts surgically:
 * Identifies offending caller IPs responsible for runaway traffic loops
 * Appends offending IPs (`/32`) into AWS WAFv2 IP Sets (`fuse-blocked-ips`)
-* Returns immediate **HTTP 403 Forbidden** to the bad actor while preserving **HTTP 200** flow for all normal traffic.
+* Returns immediate **HTTP 403 Forbidden** to the bad actor while preserving **HTTP 200** flow for non-offending caller IPs (with shared NAT/VPN co-location caveat noted).
 
 ### 3. Automated Cooldown & Self-Healing (Auto-Recovery)
 Incidents are not permanent locks. The poller monitors active IP blocks and automatically purges expired IP addresses after a configurable cooldown window (`RECOVERY_WINDOW_MINUTES`, default: 15 min), safely returning the system to normal operations.
@@ -140,7 +140,7 @@ Fuse uses a two-tier strategy to eliminate detection lag:
 * **Tier 1 (Instant Edge Flood Cap)**: Native AWS WAF Rate-Based Rule (`fuse-emergency-burst-cap`) drops violent floods (>500 reqs/5min per IP) at the regional edge within seconds.
 * **Tier 2 (Cognitive Poller + Bedrock Sentinel)**: Inspects subtle, low-frequency runaway retry loops (90 reqs/min) that bypass static rate rules over a 15-minute statistical window and orchestrates automated self-healing.
 
-### 7. End-to-End Time-to-Block & Propagation Breakdown
+### 8. End-to-End Time-to-Block & Propagation Breakdown
 
 | Phase | Subsystem | Latency / Window | Operational Optimization |
 | :--- | :--- | :--- | :--- |
@@ -151,9 +151,9 @@ Fuse uses a two-tier strategy to eliminate detection lag:
 | **WAF IP Set Update** | Remediator (`update_ip_set`) | **~250ms** | Appends caller `/32` CIDR using optimistic locking (`LockToken`). |
 | **WAF Propagation** | AWS Regional WAF Edge | **~2s – 4s** | Global/regional sync drops subsequent packets with **HTTP 403**. |
 
-**Total Out-of-Band Time-to-Block:** **~62 to 65 seconds** (capping runaway loop damage to ~$1-$3 vs. 6-8 hour $10,000 AWS Budget lag) while maintaining **0ms added latency** on healthy API requests.
+**Total Out-of-Band Time-to-Block:** **~62 to 65 seconds** (*illustrative estimate:* caps a runaway ~500 req/s serverless compute loop to ~$1-$3 within ~1 min, assuming standard API Gateway + Lambda execution pricing, compared to unbounded accumulation over hours before static budget alert notifications) while maintaining **0ms added latency** on healthy API requests.
 
-### 8. Threat Model & Operational Boundaries
+### 9. Threat Model & Operational Boundaries
 * **60s CloudWatch Metric Lag**: CloudWatch publishes API Gateway metric data in 1-minute aggregations. The Tier-1 native rate rule provides immediate edge buffering during the aggregation interval.
 * **Log Ingestion Tuning**: Querying CloudWatch Logs uses strict server-side timestamp filtering (`startTime`) and pattern gating (`filterPattern`) to prevent Lambda timeout during high-volume spikes.
 * **Shared NAT/VPN IP Boundaries**: When multiple clients share an egress proxy IP, surgical IP blocking temporarily affects co-located users. Production v2 roadmaps introduce per-JWT claim / API Key targeted throttling.
@@ -162,16 +162,18 @@ Fuse uses a two-tier strategy to eliminate detection lag:
 
 ## 04 / Live Verification & Test Scripts
 
-Every script interacts directly with live AWS endpoints and DynamoDB tables in `ap-south-1`:
+Fuse verification is split between deterministic edge isolation unit suites and end-to-end traffic generators in `ap-south-1`:
 
 | Script | Command | Purpose & Expected Verification |
 | :--- | :--- | :--- |
-| **Naive Comparison** | `python scripts/simulate_naive_threshold.py` | Proves static threshold fails during flash sale while Fuse preserves legitimate traffic. |
-| **Scenario 1 (Legit Traffic)** | `python scripts/load_test_legit.py` | 35 requests from 35 unique callers &rarr; Bedrock classifies `NORMAL`. |
-| **Scenario 2 (Runaway Loop)** | `python scripts/load_test_runaway.py` | 40 rapid requests from 1 caller &rarr; Bedrock classifies `RUNAWAY` &rarr; prod withheld in `ApprovalQueue`. |
-| **Live Web Approval** | Open [Fuse Console](https://main.d1hndpgpwb40h8.amplifyapp.com) | Click *Approve Circuit Trip* &rarr; Stage `RateLimit` drops to 0 &rarr; Live Probe confirms `HTTP 429`. |
-| **Automated End-to-End** | `python scripts/test_day3_remediation.py` | Automated validation of approval, stage mutation, and curl 429 verification. |
-| **Clean Slate Reset** | `python scripts/clear_test_data.py` | Wipes DynamoDB incident records and resets API Gateway stage throttles back to 1000/2000. |
+| **Poller Sentinel Unit** | `python scripts/test_prefilter_gate.py` | Validates volume floor, deterministic Z-score variance (Z &ge; 2.5), caller dominance (> 85%), and Remediator invocation. |
+| **WAF Remediator Unit** | `python scripts/test_remediator.py` | Validates WAF IPSet mutation (`update_ip_set`), idempotency (`ALREADY_BLOCKED`), and cooldown unblock flow. |
+| **Reasoner Enrichment Unit** | `python scripts/test_reasoner.py` | Validates async Bedrock enrichment, structured JSON payload output, and fail-closed fallback to RUNAWAY on timeout. |
+| **Scenario 1: Legit Traffic** | `python scripts/load_test_legit.py` | Sends 35 requests across distinct simulated callers &rarr; Poller measures high caller entropy &rarr; Baseline preserved, zero WAF blocking. |
+| **Scenario 2: Runaway Loop** | `python scripts/load_test_runaway.py` | Sends 40 rapid requests from 1 caller &rarr; Poller detects single-caller dominance &rarr; Remediator adds `/32` to WAF IPSet &rarr; Subsequent requests receive `HTTP 403`. |
+| **Threshold Comparison** | `python scripts/simulate_naive_threshold.py` | Benchmarks static threshold (fails on flash surges) against dynamic caller-diversity baseline. |
+| **Clean Slate Reset** | `python scripts/clear_test_data.py` | Wipes DynamoDB incident logs and heartbeats to reset testing state. |
+| **[Legacy] Day 3 Throttle** | `python scripts/test_day3_remediation.py` | *(Legacy)* Historical prototype test of stage-level `RateLimit -> 0` throttle (superseded by WAF IP-level circuit breaking). |
 
 ---
 
@@ -191,8 +193,6 @@ Every script interacts directly with live AWS endpoints and DynamoDB tables in `
 | **Metrics Poller** | `guardrail-poller` | AWS Lambda (Python 3.12, multi-tenant scanner & dispatcher) |
 | **Onboarding API** | `guardrail-onboarding` | AWS Lambda fronted by `/tenants` and `/tenants/{id}/verify` |
 | **Incidents Query** | `guardrail-get-incidents` | AWS Lambda fronted by `/incidents` |
-
----
 
 ---
 
@@ -228,7 +228,7 @@ make deploy
 
 ---
 
-## 06 / Developer CLI & Model Context Protocol (MCP)
+## 07 / Developer CLI & Model Context Protocol (MCP)
 
 Fuse provides first-class developer tooling for both command-line terminals and AI agents (Claude Desktop, Cursor, Antigravity).
 
@@ -282,7 +282,7 @@ python mcp_server.py
 
 ---
 
-## 07 / Security Notes & Frontend Setup
+## 08 / Security Notes & Frontend Setup
 
 ### Security Notes (Developer Preview vs. Enterprise Production)
 * **Browser-Side API Key is Developer-Preview Only**: The client-side configuration (`config.js`) passes an API key in the browser environment. This pattern is designed for developer evaluation and initial deployment testing.
@@ -305,7 +305,7 @@ python mcp_server.py
 
 ---
 
-## 08 / Cost Profile & Teardown
+## 09 / Cost Profile & Teardown
 
 ### Cost Efficiency
 - **DynamoDB**: On-Demand billing (`PAY_PER_REQUEST`) ensures $0 cost when idle.
@@ -325,19 +325,19 @@ make delete
 
 ---
 
-## 09 / Core Capabilities & Architecture Highlights
+## 10 / Core Capabilities & Architecture Highlights
 
 | Capability | How Fuse Delivers It |
 | :--- | :--- |
 | **Out-of-Band Telemetry** | 0 ms proxy latency; EventBridge polls CloudWatch metrics every 60s without placing inline proxy middleware on client traffic. |
 | **Deterministic Anomaly Math** | Evaluates volume floors, Z-score variance (Z &ge; 2.5), and caller dominance (> 85%) before invoking AI models. |
 | **Asynchronous Cognitive Enrichment** | Uses Amazon Bedrock Converse API with structured `toolConfig` for rich root-cause narrative synthesis without blocking mitigation. |
-| **Surgical Edge Containment** | Updates AWS WAFv2 regional IP Sets to drop offending /32 caller CIDRs at the AWS edge with HTTP 403, preserving 100% of legitimate customer traffic. |
+| **Surgical Edge Containment** | Updates AWS WAFv2 regional IP Sets to drop offending /32 caller CIDRs at the AWS edge with HTTP 403, allowing other caller IPs to proceed without global stage throttling (shared NAT/VPN boundaries apply). |
 | **Automated Cooldown Recovery** | Stale IP blocks automatically unblock after a configurable 15-minute cooldown window. |
 
 ---
 
-## 10 / Key Architectural Principles
+## 11 / Key Architectural Principles
 
 1. **Structured Tool Calls over Free-Text**: Using Bedrock Converse with `toolConfig` turns an LLM into a reliable, typed microservice with zero JSON parsing failures.
 2. **Context Eliminates False Outages**: Correlating deployment heartbeats and unique caller ratios completely solves the false-positive outage problem inherent to static CloudWatch alarms.
@@ -345,7 +345,7 @@ make delete
 
 ---
 
-## 11 / Project Documentation
+## 12 / Project Documentation
 
 * [Product Walkthrough Video](https://youtu.be/UWzPBdO63ek) — 3-Minute Live Anomaly Mitigation Walkthrough
 * [docs/blog-post.md](docs/blog-post.md) — AWS Builder Center Technical Article
