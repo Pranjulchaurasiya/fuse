@@ -10,13 +10,68 @@ import json
 import logging
 import math
 import os
+import re
 import time
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 import boto3
 from boto3.dynamodb.conditions import Attr
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# IPv4 regex with octet boundaries (0-255) to extract valid IPs from unformatted logs or headers
+IPV4_REGEX = re.compile(
+    r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+)
+
+
+def extract_caller_ip(msg: str) -> str:
+    """Universal multi-schema IP extractor:
+    1. Native API Gateway JSON access logs ($context.identity.sourceIp / ip / sourceIp)
+    2. Common Log Format (CLF) / Apache web logs (leading IP)
+    3. Custom application payloads (caller / ip / clientIp)
+    4. General raw regex boundary search
+    Never synthesizes or fabricates data — returns None if no valid external IP exists.
+    """
+    if not msg:
+        return None
+
+    # Step 1: Attempt JSON extraction
+    brace_idx = msg.find("{")
+    if brace_idx != -1:
+        try:
+            data = json.loads(msg[brace_idx:])
+            for candidate_key in [
+                "ip",
+                "sourceIp",
+                "clientIp",
+                "caller",
+                "identitySourceIp",
+                "requestContext",
+            ]:
+                val = data.get(candidate_key)
+                if isinstance(val, dict):
+                    # Check nested requestContext.identity.sourceIp
+                    nested_ip = val.get("identity", {}).get("sourceIp")
+                    if nested_ip and nested_ip not in ["unknown", "-", ""]:
+                        return nested_ip
+                elif isinstance(val, str) and val not in ["unknown", "-", ""]:
+                    if IPV4_REGEX.match(val):
+                        return val
+        except Exception:
+            pass
+
+    # Step 2: Universal regex extraction from raw or standard Apache/CLF log lines
+    match = IPV4_REGEX.search(msg)
+    if match:
+        ip_candidate = match.group(0)
+        # Filter out obvious loopback or non-routable defaults
+        if not ip_candidate.startswith("127.") and not ip_candidate.startswith("0.0."):
+            return ip_candidate
+
+    return None
+
 
 REGION_NAME = os.environ.get("AWS_REGION", "ap-south-1")
 API_NAME = os.environ.get("API_NAME", "guardrail-demo-api")
@@ -64,31 +119,54 @@ def check_deploy_heartbeat(resource_name: str, window_seconds: int = 900):
 
 
 def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 15):
-    """Extracts real unique caller IPs and request payload samples from demo API CloudWatch logs."""
+    """Extracts real unique caller IPs, request payload samples, and raw caller frequency list
+    from API CloudWatch logs using multi-schema detection (no synthetic/fake data)."""
     now_ms = int(time.time() * 1000)
     start_ms = now_ms - (window_minutes * 60 * 1000)
 
     unique_ips = set()
+    all_extracted_ips = []
     sample_payloads = []
 
     try:
-        response = logs_client.filter_log_events(
-            logGroupName=log_group_name,
-            startTime=start_ms,
-            filterPattern='DEMO_API_REQUEST',
-            limit=100,
-        )
-        events = response.get("events", [])
+        # First attempt: Try filtered search for tagged API logs
+        events = []
+        try:
+            resp = logs_client.filter_log_events(
+                logGroupName=log_group_name,
+                startTime=start_ms,
+                filterPattern='DEMO_API_REQUEST',
+                limit=100,
+            )
+            events = resp.get("events", [])
+        except Exception:
+            events = []
+
+        # Second attempt fallback: If no tagged events, query raw recent events (universal API Gateway access logs)
+        if not events:
+            try:
+                resp = logs_client.filter_log_events(
+                    logGroupName=log_group_name,
+                    startTime=start_ms,
+                    limit=100,
+                )
+                events = resp.get("events", [])
+            except Exception as e:
+                logger.warning(f"Fallback log fetch encountered: {e}")
+
         for ev in events:
             msg = ev.get("message", "").strip()
+            # Universal IP extraction: Handles API Gateway JSON, CLF, Lambda headers
+            ip = extract_caller_ip(msg)
+            if ip:
+                unique_ips.add(ip)
+                all_extracted_ips.append(ip)
+
+            # Sample payload extraction if present
             try:
-                # Find start of JSON object in log message
                 brace_idx = msg.find("{")
                 if brace_idx != -1:
                     data = json.loads(msg[brace_idx:])
-                    caller = data.get("caller") or data.get("ip")
-                    if caller and caller != "unknown":
-                        unique_ips.add(caller)
                     body = data.get("body")
                     if body:
                         str_body = body if isinstance(body, str) else json.dumps(body)
@@ -98,11 +176,14 @@ def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 1
                 continue
 
         caller_count = max(len(unique_ips), 1) if events else 1
-        logger.info(f"Extracted {len(unique_ips)} unique caller IPs and {len(sample_payloads)} payload samples from logs.")
-        return caller_count, sample_payloads, list(unique_ips)
+        logger.info(
+            f"Extracted {len(unique_ips)} unique caller IPs ({len(all_extracted_ips)} occurrences) and {len(sample_payloads)} payloads."
+        )
+        return caller_count, sample_payloads, list(unique_ips), all_extracted_ips
     except Exception as e:
-        logger.warning(f"Could not query demo logs from {log_group_name}: {e}")
-        return 1, [], []
+        logger.warning(f"Could not query logs from {log_group_name}: {e}")
+        return 1, [], [], []
+
 
 
 def get_api_metric_data(api_name: str, stage_name: str, window_minutes: int = 15):
@@ -354,10 +435,22 @@ def lambda_handler(event, context):
     recent_deploy, deploy_note, deployment_id = check_deploy_heartbeat(API_NAME, window_seconds=WINDOW_MINUTES * 60)
 
     # 3. Extract real unique callers and sample payloads from demo API CloudWatch logs
-    unique_caller_count, sample_payloads, unique_ips = get_unique_callers_and_payloads(
+    unique_caller_count, sample_payloads, unique_ips, all_extracted_ips = get_unique_callers_and_payloads(
         DEMO_TARGET_LOG_GROUP, window_minutes=WINDOW_MINUTES
     )
     caller_diversity_score = round(float(unique_caller_count) / max(current_count, 1), 4)
+
+    # Calculate actual observed caller frequency distribution (No fake/assumed numbers)
+    ip_counter = Counter(all_extracted_ips)
+    total_observed_occurrences = len(all_extracted_ips)
+    dominant_offender_ips = []
+
+    if total_observed_occurrences > 0:
+        # Measure true proportion: Any caller responsible for >= 40% of observed traffic
+        for candidate_ip, count in ip_counter.most_common(5):
+            ratio = count / total_observed_occurrences
+            if ratio >= 0.40 or (unique_caller_count == 1 and count >= 1):
+                dominant_offender_ips.append(candidate_ip)
 
     # 4. Construct structured metric snapshot payload
     payload = {
@@ -414,8 +507,12 @@ def lambda_handler(event, context):
     # Anomaly detected. Classify deterministically based on caller pattern.
     logger.info(f"ANOMALY DETECTED (count={current_count}, Z={z_score}, delta={delta}). Running deterministic classification...")
 
-    # Check caller dominance: if a single caller is responsible for most traffic
-    is_single_caller_dominant = (unique_caller_count == 1) or (caller_diversity_score < (1.0 - CALLER_DOMINANCE_THRESHOLD))
+    # Check caller dominance: either low global diversity or an observed dominant IP taking >=40% share
+    is_single_caller_dominant = (
+        (unique_caller_count == 1)
+        or (caller_diversity_score < (1.0 - CALLER_DOMINANCE_THRESHOLD))
+        or len(dominant_offender_ips) > 0
+    )
     is_post_deploy = recent_deploy  # Recent deploy + spike = likely code bug
 
     classification = "NORMAL"
@@ -423,10 +520,18 @@ def lambda_handler(event, context):
 
     if is_single_caller_dominant:
         classification = "RUNAWAY"
-        reason_parts.append(f"Single caller dominance detected (diversity={caller_diversity_score}, callers={unique_caller_count})")
+        if dominant_offender_ips:
+            top_offender = dominant_offender_ips[0]
+            top_count = ip_counter[top_offender]
+            top_share = round((top_count / max(total_observed_occurrences, 1)) * 100, 1)
+            reason_parts.append(
+                f"Dominant caller {top_offender} drove {top_count}/{total_observed_occurrences} requests ({top_share}%)"
+            )
+        else:
+            reason_parts.append(f"Low caller diversity detected (diversity={caller_diversity_score}, callers={unique_caller_count})")
 
     if is_post_deploy and is_single_caller_dominant:
-        reason_parts.append(f"Post-deploy spike correlated with low caller diversity (deploy note: {deploy_note})")
+        reason_parts.append(f"Post-deploy spike correlated with caller anomaly (deploy note: {deploy_note})")
         classification = "RUNAWAY"  # reinforces
 
     if z_score > 5.0 and unique_caller_count <= 2:
@@ -436,6 +541,9 @@ def lambda_handler(event, context):
     decision_reason = "; ".join(reason_parts) if reason_parts else f"Statistical anomaly (Z={z_score}) but healthy caller diversity ({unique_caller_count} callers) — likely organic surge"
     logger.info(f"DETERMINISTIC_CLASSIFICATION: {classification} — {decision_reason}")
 
+    # Target specific measured offenders; if none isolated, fallback to unique_ips
+    target_block_ips = dominant_offender_ips if dominant_offender_ips else unique_ips
+
     # 7. Act on classification
     remediation_result = None
     action_taken = "NONE"
@@ -444,15 +552,15 @@ def lambda_handler(event, context):
     payload["incident_id"] = incident_id
     payload["classification"] = classification
     payload["decision_reason"] = decision_reason
-    payload["source_ips"] = unique_ips
+    payload["source_ips"] = target_block_ips
 
-    if classification == "RUNAWAY" and unique_ips:
-        logger.info(f"RUNAWAY detected. Invoking Remediator to block IPs: {unique_ips}")
+    if classification == "RUNAWAY" and target_block_ips:
+        logger.info(f"RUNAWAY detected. Invoking Remediator to block IPs: {target_block_ips}")
         try:
             rem_payload = {
                 "action": "BLOCK",
                 "incident_id": incident_id,
-                "source_ips": unique_ips,
+                "source_ips": target_block_ips,
                 "resource": API_NAME,
                 "stage": STAGE_NAME,
                 "trigger_source": "auto_detection",
