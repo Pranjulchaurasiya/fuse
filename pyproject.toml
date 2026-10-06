@@ -29,4 +29,4 @@ fuse-mcp = "mcp_server:main"
 include = ["cli*"]
 
 [tool.setuptools]
-py-modules = ["mcp_server"]
+py-modules = ["mcp_server", "fuse"]
