@@ -610,7 +610,7 @@
                 <div class="input-grid-2">
                   <div>
                     <label class="form-label" for="api_gateway_id">API Gateway REST ID</label>
-                    <input type="text" id="api_gateway_id" class="form-input input-mono" placeholder="poim5xmgs2" required />
+                    <input type="text" id="api_gateway_id" class="form-input input-mono" placeholder="poim5xmgs2 (or * for all)" />
                   </div>
                   <div>
                     <label class="form-label" for="api_stage">Stage</label>
@@ -740,7 +740,7 @@
 
       const email = document.getElementById('email').value.trim();
       const aws_account_id = document.getElementById('aws_account_id').value.trim();
-      const api_gateway_id = document.getElementById('api_gateway_id').value.trim();
+      const api_gateway_id = document.getElementById('api_gateway_id').value.trim() || '*';
       const api_stage = document.getElementById('api_stage').value.trim() || 'prod';
       const slack_webhook_url = document.getElementById('slack_webhook_url').value.trim();
 

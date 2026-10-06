@@ -21,6 +21,7 @@ Parameters:
 
   TargetApiId:
     Type: String
+    Default: poim5xmgs2
     Description: Target Amazon API Gateway REST API ID monitored and throttled by Fuse.
 
   TargetApiName:
@@ -217,6 +218,7 @@ Resources:
                 - apigateway:PATCH
                 - apigateway:PUT
               Resource:
+                - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis"
                 - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}"
                 - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${TargetApiId}/*"
             - Sid: IncidentsUpdateAccess

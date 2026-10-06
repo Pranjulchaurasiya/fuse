@@ -17,7 +17,8 @@ Parameters:
 
   CustomerApiGatewayId:
     Type: String
-    Description: The REST API ID of the API Gateway you want Fuse to protect.
+    Default: '*'
+    Description: The REST API ID of the API Gateway you want Fuse to protect (or '*' for all APIs in this account).
 
   CustomerApiStage:
     Type: String
@@ -70,21 +71,27 @@ Resources:
                   - wafv2:GetIPSet
                   - wafv2:UpdateIPSet
                   - wafv2:CreateIPSet
-                Resource: !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/fuse-blocked-ips/*'
+                Resource:
+                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/fuse-blocked-ips/*'
+                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/*'
               - Sid: WAFv2WebACLManagement
                 Effect: Allow
                 Action:
                   - wafv2:AssociateWebACL
                   - wafv2:CreateWebACL
                   - wafv2:GetWebACL
+                  - wafv2:UpdateWebACL
                 Resource:
                   - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/fuse-guardrail-acl/*'
+                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/*'
                   - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}/stages/${CustomerApiStage}'
               - Sid: APIGatewayRead
                 Effect: Allow
                 Action:
                   - apigateway:GET
-                Resource: !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
+                Resource:
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
 
 Outputs:
   FuseRoleArn:
