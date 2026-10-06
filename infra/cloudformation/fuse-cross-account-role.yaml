@@ -103,13 +103,11 @@ Resources:
               - apigateway:GET
             Resource:
               - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}*'
-          - Sid: WAFv2AssociateStage
-            Effect: Allow
-            Action:
-              - wafv2:AssociateWebACL
-            Resource:
               - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${CustomerApiGatewayId}/stages/${CustomerApiStage}'
-              - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/*'
+          # NOTE: Associating a WAF Web ACL with the customer API Gateway stage (which requires
+          # wafv2:AssociateWebACL and apigateway:SetWebACL) is performed ONCE during onboarding setup
+          # by the customer or setup script, NOT at runtime by Fuse. At runtime, Fuse only modifies
+          # the IPSet (wafv2:GetIPSet / wafv2:UpdateIPSet) without touching stage attachments.
 
 Outputs:
   FuseRoleArn:

@@ -64,6 +64,11 @@ If you prefer to inspect, customize, or execute individual steps manually, follo
 8. **Deploy heartbeat wiring** — add the `deploy_heartbeat.py` call as the
    last line of whatever counts as your "deploy" step for the demo API
 
+### WAF Web ACL Stage Association (Setup-Only Operation)
+Associating the WAF Web ACL (`fuse-guardrail-acl`) with an API Gateway stage (which requires `wafv2:AssociateWebACL` and `apigateway:SetWebACL`) is performed **once during initial onboarding setup** (via `scripts/setup_waf.py` or the AWS WAF Console). 
+
+At runtime, Fuse never modifies or disassociates stage attachments; the Remediator Lambda operates with surgical least privilege, performing mutations strictly on the WAF IPSet (`wafv2:GetIPSet` and `wafv2:UpdateIPSet`). Neither the runtime cross-account IAM role nor the central SAM stack requires `apigateway:SetWebACL` or runtime `wafv2:AssociateWebACL` permissions.
+
 ## AWS Amplify Hosting Deployment & Environment Variables
 
 Fuse supports two deployment paths to AWS Amplify Hosting:
