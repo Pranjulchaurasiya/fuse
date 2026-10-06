@@ -619,6 +619,14 @@
                 </div>
               </div>
 
+              <div class="form-group">
+                <label class="form-label" for="slack_webhook_url">
+                  <span>Slack Incident Alert Webhook (Optional)</span>
+                  <span class="form-label-hint">Instant channel alerts</span>
+                </label>
+                <input type="url" id="slack_webhook_url" class="form-input input-mono" placeholder="https://hooks.slack.com/services/..." />
+              </div>
+
               <button type="submit" id="btn-register" class="btn-submit">
                 <span>Generate CloudFormation Link &rarr;</span>
               </button>
@@ -734,12 +742,13 @@
       const aws_account_id = document.getElementById('aws_account_id').value.trim();
       const api_gateway_id = document.getElementById('api_gateway_id').value.trim();
       const api_stage = document.getElementById('api_stage').value.trim() || 'prod';
+      const slack_webhook_url = document.getElementById('slack_webhook_url').value.trim();
 
       try {
         const res = await fetch(`${BASE_URL}/tenants`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, aws_account_id, api_gateway_id, api_stage })
+          body: JSON.stringify({ email, aws_account_id, api_gateway_id, api_stage, slack_webhook_url })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');

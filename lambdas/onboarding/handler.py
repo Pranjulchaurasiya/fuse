@@ -101,11 +101,13 @@ def register_tenant(event):
     if not email or not aws_account_id:
         return err(400, 'email and aws_account_id are required')
 
+    slack_webhook_url = body.get('slack_webhook_url', '').strip()
+
     tenant_id = str(uuid.uuid4())
     external_id = str(uuid.uuid4())  # secret per-tenant external ID
     now = int(time.time())
 
-    tenants_table.put_item(Item={
+    item = {
         'tenant_id': tenant_id,
         'email': email,
         'aws_account_id': aws_account_id,
@@ -116,7 +118,11 @@ def register_tenant(event):
         'status': 'PENDING',
         'created_at': now,
         'connected_at': None,
-    })
+    }
+    if slack_webhook_url:
+        item['slack_webhook_url'] = slack_webhook_url
+
+    tenants_table.put_item(Item=item)
 
     # Build the CloudFormation quick-launch URL
     import urllib.parse
