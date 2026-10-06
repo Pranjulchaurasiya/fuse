@@ -203,13 +203,16 @@ def handle_waf_action(action, source_ips):
             
         # 4. Update IP Set if necessary
         if action_taken in ("IP_BLOCKED", "IP_UNBLOCKED"):
+            desc = response['IPSet'].get('Description') or 'Fuse Guardrail Managed IP Set'
+            if not desc.strip():
+                desc = 'Fuse Guardrail Managed IP Set'
             wafv2_client.update_ip_set(
                 Name=WAF_IP_SET_NAME,
                 Scope='REGIONAL',
                 Id=WAF_IP_SET_ID,
                 Addresses=new_addresses,
                 LockToken=lock_token,
-                Description=response['IPSet'].get('Description', 'Fuse Guardrail Managed IP Set')
+                Description=desc
             )
             logger.info(f"Successfully updated WAF IP Set. Total IPs now: {len(new_addresses)}")
             
