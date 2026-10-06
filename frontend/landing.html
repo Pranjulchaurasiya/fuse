@@ -1281,11 +1281,11 @@
       </div>
 
       <nav class="nav-links">
-        <a href="#architecture" class="nav-link">Architecture</a>
-        <a href="#benchmarks" class="nav-link">Empirical Benchmarks</a>
-        <a href="#verification" class="nav-link">Edge Verification</a>
-        <a href="#developer-tools" class="nav-link">CLI &amp; MCP</a>
-        <a href="#security" class="nav-link">Zero-Trust</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#comparison" class="nav-link">Why Fuse</a>
+        <a href="#live-proof" class="nav-link">Live Proof</a>
+        <a href="#developers" class="nav-link">Developers</a>
+        <a href="#security" class="nav-link">Security</a>
       </nav>
 
       <div class="nav-actions">
@@ -1353,11 +1353,11 @@
       </div>
     </section>
 
-    <!-- Interactive Architecture Flow (Kuber OS Inspired Circuit) -->
-    <section id="architecture" class="section-block">
+    <!-- Interactive Architecture Flow (Circuit Diagram) -->
+    <section id="how-it-works" class="section-block">
       <div class="section-header">
-        <span class="section-tag">01 &bull; CIRCUIT ARCHITECTURE FLOW</span>
-        <span class="section-subtitle">Zero-proxy telemetry convergence &bull; Deterministic classification &bull; Surgical WAF isolation</span>
+        <span class="section-tag">01 &bull; HOW IT WORKS</span>
+        <span class="section-subtitle">Zero-proxy telemetry &bull; Anomaly detection &bull; Surgical WAF isolation</span>
       </div>
 
       <div class="circuit-wrapper">
@@ -1461,11 +1461,11 @@
       </div>
     </section>
 
-    <!-- Invariant & Empirical Benchmarks -->
-    <section id="benchmarks" class="section-block">
+    <!-- Solution Comparison -->
+    <section id="comparison" class="section-block">
       <div class="section-header">
-        <span class="section-tag">02 &bull; INVARIANT BENCHMARK COMPARISON</span>
-        <span class="section-subtitle">Comparing real production containment, blast radius, and uptime</span>
+        <span class="section-tag">02 &bull; WHY FUSE &bull; SOLUTION COMPARISON</span>
+        <span class="section-subtitle">How surgical WAF edge isolation compares to traditional alarms and blunt rate limits</span>
       </div>
 
       <div class="benchmark-grid">
@@ -1474,14 +1474,14 @@
           <div class="benchmark-header">
             <div class="benchmark-status status-alert">&bull; REACTIVE MONITORING</div>
             <h3 class="benchmark-title">CloudWatch Alarm</h3>
-            <p class="benchmark-subtitle">Static threshold alerting via SNS/PagerDuty to human on-call engineers.</p>
+            <p class="benchmark-subtitle">Static threshold alerting via SNS or PagerDuty to on-call engineers.</p>
           </div>
 
           <div class="benchmark-metrics">
             <div class="benchmark-metric-row">
               <div class="metric-meta">
-                <span class="metric-meta-label">Containment Latency</span>
-                <span class="metric-meta-val">15 &ndash; 45 mins</span>
+                <span class="metric-meta-label">Containment Speed</span>
+                <span class="metric-meta-val">Manual (Human Dependent)</span>
               </div>
               <div class="bar-track">
                 <div class="bar-fill fill-danger" style="width: 85%;"></div>
@@ -1491,7 +1491,7 @@
             <div class="benchmark-metric-row">
               <div class="metric-meta">
                 <span class="metric-meta-label">False Positive Risk</span>
-                <span class="metric-meta-val">High (Spikes trip alerts)</span>
+                <span class="metric-meta-val">High (Trips on Flash Sales)</span>
               </div>
               <div class="bar-track">
                 <div class="bar-fill fill-danger" style="width: 75%;"></div>
@@ -1500,8 +1500,8 @@
 
             <div class="benchmark-metric-row">
               <div class="metric-meta">
-                <span class="metric-meta-label">Financial Blast Radius</span>
-                <span class="metric-meta-val">$500 &ndash; $2,500+</span>
+                <span class="metric-meta-label">Mitigation Blast Radius</span>
+                <span class="metric-meta-val">Uncontrolled Until Remediation</span>
               </div>
               <div class="bar-track">
                 <div class="bar-fill fill-warning" style="width: 70%;"></div>
@@ -1610,11 +1610,11 @@
       </div>
     </section>
 
-    <!-- Edge Verification Terminal Snippet -->
-    <section id="verification" class="section-block">
+    <!-- Live Proof Terminal Snippet -->
+    <section id="live-proof" class="section-block">
       <div class="section-header">
-        <span class="section-tag">03 &bull; EDGE VERIFICATION</span>
-        <span class="section-subtitle">Real-world live response comparison under runaway test conditions</span>
+        <span class="section-tag">03 &bull; LIVE PROOF &bull; SURGICAL ISOLATION</span>
+        <span class="section-subtitle">Real AWS HTTP edge response comparison under active circuit breaker conditions</span>
       </div>
 
       <div class="terminal-section">
@@ -1653,10 +1653,10 @@
     </section>
 
     <!-- Developer & AI Agent Tooling (CLI + Model Context Protocol) -->
-    <section id="developer-tools" class="section-block">
+    <section id="developers" class="section-block">
       <div class="section-header">
-        <span class="section-tag">04 &bull; DEVELOPER &amp; AI AGENT INTERFACES</span>
-        <span class="section-subtitle">Control Fuse via terminal CLI or connect directly to Claude Desktop &amp; Cursor via Model Context Protocol (MCP)</span>
+        <span class="section-tag">04 &bull; DEVELOPERS &amp; AI AGENTS</span>
+        <span class="section-subtitle">Operate Fuse from your terminal CLI or connect directly to Claude Desktop &amp; Cursor via Model Context Protocol (MCP)</span>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
@@ -1711,20 +1711,20 @@
       </div>
     </section>
 
-    <!-- Zero-Trust Architecture Guarantee -->
+    <!-- Enterprise Security Guarantee -->
     <section id="security" class="section-block">
       <div class="trust-card">
         <div class="trust-content">
-          <h3>Zero-Trust Cross-Account Isolation</h3>
+          <h3>Cross-Account Security &amp; Zero Credential Storage</h3>
           <p>
-            You never provide IAM long-term access keys or secrets to Fuse. Integration uses AWS standard cross-account roles with a unique, cryptographically random <code>ExternalId</code>. Fuse assumes the role on-demand via <code>sts:AssumeRole</code> for 15 minutes only to inspect CloudWatch metrics and write WAF IP blocks. You can revoke access instantly with one click by deleting the CloudFormation stack.
+            You never provide AWS access keys, secret keys, or permanent credentials to Fuse. Integration uses native AWS cross-account IAM roles with a cryptographically unique <code>ExternalId</code>. Fuse assumes the role on-demand via <code>sts:AssumeRole</code> for 15 minutes only to read CloudWatch metrics and write WAF IP block sets. You can revoke access instantly at any time by deleting the CloudFormation stack.
           </p>
           <div class="trust-tags">
             <span class="trust-tag">sts:AssumeRole</span>
             <span class="trust-tag">ExternalId Protection</span>
-            <span class="trust-tag">1-Click Teardown</span>
+            <span class="trust-tag">1-Click Revocation</span>
             <span class="trust-tag">Zero Credential Storage</span>
-            <span class="trust-tag">WAFv2 Regional Scope</span>
+            <span class="trust-tag">Scoped WAFv2 Permissions</span>
           </div>
         </div>
         <a href="#connect" class="btn btn-primary" onclick="openConnectModal(event)" style="white-space: nowrap;">
