@@ -18,28 +18,23 @@ do not add abstraction, retries, or "just in case" code.
   `put_item` call at the end of the deploy script, nothing else.
 - **No API Gateway caching.** Leave it off. Do not build cache hit/miss
   logic — there is nothing to reconcile if caching is never enabled.
-- **One remediation target only: API Gateway stage throttle
-  (`RateLimit`/`BurstLimit` → 0).** Do not write generic "pause any AWS
-  resource" logic. Do not touch IAM roles, EC2, or Lambda concurrency.
+- **One remediation target: AWS WAFv2 IP Set surgical blocking.**
+  Blocks runaway offending caller IPs at the cloud edge with optimistic lock retries.
+  Avoids blunt scorched-earth full-stage throttling whenever possible.
 - **No Cedar, no sub-agents, no sandboxed code execution, no mCRL2/UPPAAL.**
   These were considered and explicitly rejected for this build — do not
   reintroduce them even if a later idea "would benefit."
-- **Bedrock is called exactly once per detection cycle**, with a single
-  structured prompt (see API.md). No agent loop, no multi-turn tool use
-  inside the classification step.
+- **Bedrock is called asynchronously for incident enrichment**, with a single
+  structured prompt and Converse API `toolConfig`. Zero LLM calls on the deterministic detection path.
 
 ## Tech stack (locked)
 - **Compute**: AWS Lambda (Python 3.12, boto3)
 - **Scheduling**: EventBridge (1-min rate rule)
 - **Metrics source**: `AWS/ApiGateway` namespace (`Count`), via
   `cloudwatch.get_metric_data`
-- **Reasoning**: Amazon Bedrock (Claude 3.5 Haiku — cheaper/faster than
-  Sonnet, sufficient for a classification task; do not upgrade model mid-build
-  to "improve quality," it is not the bottleneck)
-- **State**: DynamoDB — three tables only: `Deployments`, `Incidents`,
-  `ApprovalQueue` (see SCHEMA.md)
-- **API surface**: API Gateway (REST) fronting two Lambdas: `get-incidents`,
-  `approve-action`
+- **Reasoning**: Amazon Bedrock (`apac.amazon.nova-micro-v1:0` via Converse API toolConfig)
+- **State**: DynamoDB — `Deployments`, `Incidents`, `ApprovalQueue`, `Fuse_Tenants`
+- **API surface**: API Gateway (REST) fronting `get-incidents`, `approve-action`, `onboarding`
 - **Frontend**: one static HTML/JS page (or a single React page if time
   allows), hosted on S3 or Amplify Hosting. No framework sprawl.
 - **IaC**: plain boto3/console setup is acceptable for a 4-day hackathon.

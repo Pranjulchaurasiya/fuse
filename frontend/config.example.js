@@ -20,5 +20,10 @@ const FUSE_CONFIG = {
   TARGET_API_URL: "https://<target-api-id>.execute-api.ap-south-1.amazonaws.com/prod/items",
 
   // Operator console password gate (demo-grade session gate)
-  OPERATOR_PASSWORD: "replace-with-your-operator-password"
+  OPERATOR_PASSWORD: "replace-with-your-operator-password",
+
+  // Amazon Cognito User Pool for cryptographic JWT authentication
+  COGNITO_USER_POOL_ID: "ap-south-1_09wo36fcc",
+  COGNITO_CLIENT_ID: "79gbbjcj2h5kji0ng2a6ua0llg",
+  AWS_REGION: "ap-south-1"
 };

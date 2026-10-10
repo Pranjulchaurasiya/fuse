@@ -23,6 +23,7 @@ import logging
 import os
 from decimal import Decimal
 import boto3
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -37,7 +38,7 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key",
 }
 
 
@@ -64,16 +65,34 @@ def lambda_handler(event, context):
         }
 
     try:
-        response = table.scan(Limit=100)
-        items = response.get("Items", [])
+        # Extract tenant context from Cognito JWT claims or query params
+        claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
+        tenant_id = claims.get("custom:tenant_id")
+        if not tenant_id:
+            query_params = event.get("queryStringParameters") or {}
+            tenant_id = query_params.get("tenant_id")
 
-        # Sort by timestamp descending
-        items.sort(key=lambda x: int(x.get("timestamp", 0)), reverse=True)
+        if tenant_id and str(tenant_id).lower() != "all":
+            logger.info(f"Tenant isolation active: querying TenantIndex for tenant_id={tenant_id}")
+            response = table.query(
+                IndexName="TenantIndex",
+                KeyConditionExpression=Key("tenant_id").eq(tenant_id),
+                ScanIndexForward=False,
+                Limit=100,
+            )
+            items = response.get("Items", [])
+        else:
+            logger.info("Admin/unpartitioned mode: scanning Incidents table (Limit 100)")
+            response = table.scan(Limit=100)
+            items = response.get("Items", [])
+            # Sort by timestamp descending
+            items.sort(key=lambda x: int(x.get("timestamp", 0)), reverse=True)
 
         formatted_incidents = []
         for it in items:
             formatted_incidents.append({
                 "incident_id": it.get("incident_id"),
+                "tenant_id": it.get("tenant_id", "default"),
                 "timestamp": int(it.get("timestamp", 0)),
                 "resource": it.get("resource", "guardrail-demo-api"),
                 "environment": it.get("environment", "prod"),
@@ -83,6 +102,7 @@ def lambda_handler(event, context):
                 "action_taken": it.get("action_taken", "NONE"),
                 "blocked_ips": serialize_item(it.get("blocked_ips") or it.get("source_ips", [])),
                 "recovered_at": int(it.get("recovered_at")) if it.get("recovered_at") else None,
+                "audit_trail": serialize_item(it.get("audit_trail", [])),
                 "metric_snapshot": serialize_item(it.get("metric_snapshot", {})),
                 "deploy_context": serialize_item(it.get("deploy_context", {})),
             })

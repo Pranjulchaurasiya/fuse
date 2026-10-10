@@ -118,11 +118,12 @@ def check_deploy_heartbeat(resource_name: str, window_seconds: int = 900):
         return False, None, None
 
 
-def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 15):
+def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 3):
     """Extracts real unique caller IPs, request payload samples, and raw caller frequency list
-    from API CloudWatch logs using multi-schema detection (no synthetic/fake data)."""
+    from API CloudWatch logs using multi-schema detection (no synthetic/fake data).
+    Bounded to immediate spike window (<= 3 min) to prevent query timeouts during high-volume spikes."""
     now_ms = int(time.time() * 1000)
-    start_ms = now_ms - (window_minutes * 60 * 1000)
+    start_ms = now_ms - (min(window_minutes, 3) * 60 * 1000)
 
     unique_ips = set()
     all_extracted_ips = []
@@ -384,13 +385,14 @@ def lambda_handler(event, context):
         logger.info(f'Single-tenant mode for tenant {tenant_id_ctx}, api={api_id_override}, stage={stage_override}')
         # Fall through to existing detection logic below
 
-    # Multi-tenant dispatch: if MULTI_TENANT_ENABLED and tenants exist, poll each one
+    # Multi-tenant dispatch: if MULTI_TENANT_ENABLED and tenants exist, poll each one concurrently
     if MULTI_TENANT_ENABLED:
         tenants = get_active_tenants()
         if tenants:
-            logger.info(f'Multi-tenant mode: polling {len(tenants)} active tenant(s)')
-            results = []
-            for tenant in tenants:
+            logger.info(f'Multi-tenant mode: concurrently polling {len(tenants)} active tenant(s)')
+            from concurrent.futures import ThreadPoolExecutor
+
+            def dispatch_tenant(tenant):
                 tid = tenant.get('tenant_id', 'unknown')
                 role_arn = tenant.get('role_arn', '')
                 ext_id = tenant.get('external_id', '')
@@ -399,9 +401,7 @@ def lambda_handler(event, context):
                 try:
                     cross_clients = get_cross_account_clients(role_arn, ext_id, tid)
                     if not cross_clients:
-                        results.append({'tenant_id': tid, 'status': 'ROLE_ASSUME_FAILED'})
-                        continue
-                    # Invoke self asynchronously with tenant context
+                        return {'tenant_id': tid, 'status': 'ROLE_ASSUME_FAILED'}
                     tenant_event = {
                         'api_id': tenant_api_id,
                         'stage': tenant_stage,
@@ -415,10 +415,14 @@ def lambda_handler(event, context):
                         InvocationType='Event',  # async
                         Payload=json.dumps(tenant_event),
                     )
-                    results.append({'tenant_id': tid, 'status': 'DISPATCHED'})
+                    return {'tenant_id': tid, 'status': 'DISPATCHED'}
                 except Exception as e:
                     logger.error(f'Tenant {tid} dispatch failed: {e}')
-                    results.append({'tenant_id': tid, 'status': 'DISPATCH_FAILED', 'error': str(e)})
+                    return {'tenant_id': tid, 'status': 'DISPATCH_FAILED', 'error': str(e)}
+
+            with ThreadPoolExecutor(max_workers=min(len(tenants), 10)) as executor:
+                results = list(executor.map(dispatch_tenant, tenants))
+
             return {
                 'statusCode': 200,
                 'body': {'status': 'MULTI_TENANT_DISPATCHED', 'tenants': results},

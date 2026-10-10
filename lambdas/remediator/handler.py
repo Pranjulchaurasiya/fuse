@@ -15,6 +15,8 @@ parameter for backward compatibility.
 import json
 import logging
 import os
+import random
+import time
 import boto3
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
@@ -85,9 +87,34 @@ def send_webhook_alert(action, incident_id, blocked_ips, resource, reason=""):
                 logger.warning(f"Failed to deliver webhook alert: {e}")
 
 
-def update_incident_action(incident_id, action_taken, blocked_ips=None, resource=None, stage=None):
+def emit_emf_metric(metric_name, value, unit="Count", dimensions=None):
+    """Emits high-cardinality CloudWatch Embedded Metric Format (EMF) logs for SIEM & CloudWatch Metrics."""
+    try:
+        dims = dimensions or {}
+        now_ms = int(time.time() * 1000)
+        dim_keys = list(dims.keys())
+        payload = {
+            "_aws": {
+                "Timestamp": now_ms,
+                "CloudWatchMetrics": [
+                    {
+                        "Namespace": "Fuse/Guardrail",
+                        "Dimensions": [dim_keys] if dim_keys else [],
+                        "Metrics": [{"Name": metric_name, "Unit": unit}]
+                    }
+                ]
+            },
+            metric_name: value,
+            **dims
+        }
+        print(json.dumps(payload))
+    except Exception as e:
+        logger.warning(f"Failed to emit EMF metric {metric_name}: {e}")
+
+
+def update_incident_action(incident_id, action_taken, blocked_ips=None, resource=None, stage=None, trigger_source=None, reason=None, tenant_id=None):
     """
-    Update the Incidents table with the action taken by the remediator.
+    Update the Incidents table with the action taken by the remediator and append to audit_trail.
     """
     if not incident_id:
         logger.warning("No incident_id provided, skipping incident update.")
@@ -120,6 +147,24 @@ def update_incident_action(incident_id, action_taken, blocked_ips=None, resource
         update_expr += ", #ts = if_not_exists(#ts, :ts)"
         expr_names['#ts'] = 'timestamp'
         expr_vals[':ts'] = now_epoch
+
+        if tenant_id:
+            update_expr += ", tenant_id = :tid"
+            expr_vals[':tid'] = tenant_id
+
+        # Structured SOC-2 compliant audit trail
+        audit_entry = {
+            "action": f"WAF_{action_taken}",
+            "actor_identity": "fuse-autonomous-guardrail" if trigger_source == "auto_detection" else (trigger_source or "fuse-remediator"),
+            "timestamp_utc": now_epoch,
+            "blocked_ips": blocked_ips or [],
+            "resource": resource or "",
+            "stage": stage or "",
+            "reason": reason or "",
+        }
+        update_expr += ", audit_trail = list_append(if_not_exists(audit_trail, :empty_list), :audit_entry)"
+        expr_vals[':empty_list'] = []
+        expr_vals[':audit_entry'] = [audit_entry]
 
         kwargs = {
             "Key": {'incident_id': incident_id},
@@ -157,70 +202,78 @@ def handle_waf_action(action, source_ips):
         logger.warning("No source IPs provided to block/unblock.")
         return "NO_IPS_PROVIDED", [], 0
 
-    try:
-        # 1. Get the current IP Set
-        response = wafv2_client.get_ip_set(
-            Name=WAF_IP_SET_NAME,
-            Scope='REGIONAL',
-            Id=WAF_IP_SET_ID
-        )
-        
-        lock_token = response['LockToken']
-        current_addresses = response['IPSet']['Addresses']
-        
-        # Convert provided IPs to CIDR format
-        target_cidrs = [ip if '/' in ip else f"{ip}/32" for ip in source_ips]
-        
-        current_addresses_set = set(current_addresses)
-        target_cidrs_set = set(target_cidrs)
-        
-        action_taken = ""
-        new_addresses = current_addresses
-        
-        if action == 'BLOCK':
-            # 3. Check if already in set
-            new_cidrs_to_add = target_cidrs_set - current_addresses_set
-            if not new_cidrs_to_add:
-                action_taken = "ALREADY_BLOCKED"
-                logger.info("All specified IPs are already blocked.")
-            else:
-                new_addresses = list(current_addresses_set.union(target_cidrs_set))
-                action_taken = "IP_BLOCKED"
-                logger.info(f"Adding IPs to blocklist: {new_cidrs_to_add}")
-                
-        elif action == 'UNBLOCK':
-            # Check if they are in the set to be removed
-            cidrs_to_remove = target_cidrs_set.intersection(current_addresses_set)
-            if not cidrs_to_remove:
-                action_taken = "ALREADY_UNBLOCKED"
-                logger.info("None of the specified IPs are currently blocked.")
-            else:
-                new_addresses = list(current_addresses_set - cidrs_to_remove)
-                action_taken = "IP_UNBLOCKED"
-                logger.info(f"Removing IPs from blocklist: {cidrs_to_remove}")
-        else:
-            raise ValueError(f"Unsupported action: {action}")
-            
-        # 4. Update IP Set if necessary
-        if action_taken in ("IP_BLOCKED", "IP_UNBLOCKED"):
-            desc = response['IPSet'].get('Description') or 'Fuse Guardrail Managed IP Set'
-            if not desc.strip():
-                desc = 'Fuse Guardrail Managed IP Set'
-            wafv2_client.update_ip_set(
+    max_retries = 4
+    for attempt in range(max_retries):
+        try:
+            # 1. Get the current IP Set
+            response = wafv2_client.get_ip_set(
                 Name=WAF_IP_SET_NAME,
                 Scope='REGIONAL',
-                Id=WAF_IP_SET_ID,
-                Addresses=new_addresses,
-                LockToken=lock_token,
-                Description=desc
+                Id=WAF_IP_SET_ID
             )
-            logger.info(f"Successfully updated WAF IP Set. Total IPs now: {len(new_addresses)}")
             
-        return action_taken, target_cidrs, len(new_addresses)
+            lock_token = response['LockToken']
+            current_addresses = response['IPSet']['Addresses']
+            
+            # Convert provided IPs to CIDR format
+            target_cidrs = [ip if '/' in ip else f"{ip}/32" for ip in source_ips]
+            
+            current_addresses_set = set(current_addresses)
+            target_cidrs_set = set(target_cidrs)
+            
+            action_taken = ""
+            new_addresses = current_addresses
+            
+            if action == 'BLOCK':
+                # 3. Check if already in set
+                new_cidrs_to_add = target_cidrs_set - current_addresses_set
+                if not new_cidrs_to_add:
+                    action_taken = "ALREADY_BLOCKED"
+                    logger.info("All specified IPs are already blocked.")
+                else:
+                    new_addresses = list(current_addresses_set.union(target_cidrs_set))
+                    action_taken = "IP_BLOCKED"
+                    logger.info(f"Adding IPs to blocklist: {new_cidrs_to_add}")
+                    
+            elif action == 'UNBLOCK':
+                # Check if they are in the set to be removed
+                cidrs_to_remove = target_cidrs_set.intersection(current_addresses_set)
+                if not cidrs_to_remove:
+                    action_taken = "ALREADY_UNBLOCKED"
+                    logger.info("None of the specified IPs are currently blocked.")
+                else:
+                    new_addresses = list(current_addresses_set - cidrs_to_remove)
+                    action_taken = "IP_UNBLOCKED"
+                    logger.info(f"Removing IPs from blocklist: {cidrs_to_remove}")
+            else:
+                raise ValueError(f"Unsupported action: {action}")
+                
+            # 4. Update IP Set if necessary
+            if action_taken in ("IP_BLOCKED", "IP_UNBLOCKED"):
+                desc = response['IPSet'].get('Description') or 'Fuse Guardrail Managed IP Set'
+                if not desc.strip():
+                    desc = 'Fuse Guardrail Managed IP Set'
+                wafv2_client.update_ip_set(
+                    Name=WAF_IP_SET_NAME,
+                    Scope='REGIONAL',
+                    Id=WAF_IP_SET_ID,
+                    Addresses=new_addresses,
+                    LockToken=lock_token,
+                    Description=desc
+                )
+                logger.info(f"Successfully updated WAF IP Set. Total IPs now: {len(new_addresses)}")
+                
+            return action_taken, target_cidrs, len(new_addresses)
 
-    except ClientError as e:
-        logger.error(f"Error interacting with WAFv2: {str(e)}")
-        raise
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("WAFOptimisticLockException", "WAFUnavailableEntityException") and attempt < max_retries - 1:
+                sleep_time = (0.15 * (2 ** attempt)) + random.uniform(0.02, 0.08)
+                logger.warning(f"WAF LockToken conflict ({error_code}) on attempt {attempt+1}/{max_retries}. Retrying in {sleep_time:.3f}s...")
+                time.sleep(sleep_time)
+                continue
+            logger.error(f"Error interacting with WAFv2: {str(e)}")
+            raise
 
 def lambda_handler(event, context):
     """
@@ -268,11 +321,36 @@ def lambda_handler(event, context):
         status, processed_ips, total_count = handle_waf_action(action, source_ips)
         
         # 5/4. Update Incidents table
-        update_incident_action(incident_id, status, blocked_ips=processed_ips, resource=resource, stage=stage)
+        trigger_source = payload.get('trigger_source')
+        reason = payload.get('reason', '')
+        update_incident_action(
+            incident_id, status,
+            blocked_ips=processed_ips,
+            resource=resource,
+            stage=stage,
+            trigger_source=trigger_source,
+            reason=reason,
+            tenant_id=tenant_id,
+        )
 
         # 6. Dispatch real-time notification to Slack/Discord if configured
         reason = payload.get('reason', '')
         send_webhook_alert(action, incident_id, processed_ips, resource, reason=reason)
+
+        # 7. Emit CloudWatch EMF Metric for SIEM & CloudWatch Dashboards
+        emit_emf_metric(
+            f"Waf_{action}_Executed",
+            1,
+            unit="Count",
+            dimensions={
+                "Resource": resource,
+                "Stage": stage,
+                "Action": action,
+                "Status": status,
+                "TriggerSource": trigger_source or "unknown",
+            }
+        )
+        emit_emf_metric("ActiveBlockedIpCount", total_count, unit="Count", dimensions={"Resource": resource})
         
         return {
             "statusCode": 200,

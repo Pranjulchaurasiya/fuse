@@ -13,12 +13,12 @@ This tracking ledger outlines the production milestones required to transition *
 
 ---
 
-## 🔲 Phase 2: Backend SaaS Loop Automation (NEXT STEP)
+## 🟩 Phase 2: Backend SaaS Loop Automation (100% COMPLETE)
 *Objective: Transition the engine from checking single environment targets to processing batch metrics loops for all global platform tenants concurrent.*
 
-- [ ] **Database Scan Routine Integration:** Refactor `lambdas/poller/handler.py` to strip out static `TARGET_API_ID` dependencies and replace them with a dynamic `scan()` operations filter against the `Fuse_Tenants` index table.
-- [ ] **Multi-Threaded Tenant Evaluation:** Implement Python's `concurrent.futures.ThreadPoolExecutor` into the poller runtime loop to map telemetry evaluations across multiple accounts concurrently, preventing network lags from impacting customer boundaries.
-- [ ] **Dynamic Anomaly Handoff:** Route the target `tenant_id` alongside context vectors directly down into the `guardrail-reasoner` when the Z-score trips (≥ 2.5).
+- [x] **Database Scan Routine Integration:** Built dynamic `get_active_tenants()` scan operation against `Fuse_Tenants` table with fallback to local single-target demo mode.
+- [x] **Multi-Threaded Tenant Evaluation:** Implemented `concurrent.futures.ThreadPoolExecutor` into `lambdas/poller/handler.py` to evaluate telemetry across multiple tenant accounts concurrently.
+- [x] **Dynamic Anomaly Handoff:** Routed `tenant_id` alongside context vectors and metric snapshots directly to `guardrail-reasoner` and `remediator`.
 
 ---
 
@@ -44,5 +44,5 @@ This tracking ledger outlines the production milestones required to transition *
 ## 🔲 Phase 5: Long-Term Enterprise Governance Extensions
 *Objective: Expand protection vectors past API Gateway to catch multi-resource infrastructure leaks.*
 
+- [x] **AWS WAF Edge Block Integration:** Implemented in `lambdas/remediator/handler.py` (`handle_waf_action`). Dynamically mutates AWS WAF IP Set (`fuse-blocked-ips`) with optimistic lock retries and rate-based emergency burst cap.
 - [ ] **AWS Lambda Recursion Protection:** Build pluggable remediation functions to set target function reserve concurrency parameters to zero if an unhandled backend loop occurs.
-- [ ] **AWS WAF Edge Block Integration:** Wire the remediator to dynamically update an AWS WAF IP Set to drop malicious application floods at the cloud perimeter rather than shutting down the app for paying customers.

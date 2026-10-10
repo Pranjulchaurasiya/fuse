@@ -10,10 +10,16 @@ const CONTROL_API_KEY = cfg.API_KEY || "";
 const TARGET_API_URL = cfg.TARGET_API_URL || "";
 
 /**
- * Returns fetch headers with x-api-key if configured.
+ * Returns fetch headers with Cognito Bearer token and x-api-key fallback.
  */
 function getAuthHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
+  if (typeof window !== "undefined" && window.fuseAuth && typeof window.fuseAuth.getIdToken === "function") {
+    const idToken = window.fuseAuth.getIdToken();
+    if (idToken) {
+      headers["Authorization"] = "Bearer " + idToken;
+    }
+  }
   if (CONTROL_API_KEY) {
     headers["x-api-key"] = CONTROL_API_KEY;
   }
@@ -253,6 +259,7 @@ function renderIncidentCard(inc) {
           </span>
           <span class="inc-resource" style="font-weight: 600;">${escapeHtml(inc.resource || "guardrail-demo-api")}</span>
           <span class="inc-stage" style="font-size: 10px;">[${escapeHtml(stage)}]</span>
+          ${inc.tenant_id && inc.tenant_id !== "default" ? `<span class="inc-stage" style="font-size: 10px; color: var(--accent-primary);">[TENANT: ${escapeHtml(inc.tenant_id)}]</span>` : ""}
           ${blockedList}
         </div>
         <div class="inc-time" style="font-size: 11px;">

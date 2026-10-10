@@ -61,7 +61,9 @@ Resources:
                   - logs:FilterLogEvents
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
-                Resource: '*'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apigateway/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
               - Sid: WAFv2ListOperations
                 Effect: Allow
                 Action:
@@ -76,7 +78,6 @@ Resources:
                   - wafv2:CreateIPSet
                 Resource:
                   - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/fuse-blocked-ips/*'
-                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/ipset/*'
               - Sid: WAFv2WebACLManagement
                 Effect: Allow
                 Action:
@@ -85,7 +86,6 @@ Resources:
                   - wafv2:UpdateWebACL
                 Resource:
                   - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/fuse-guardrail-acl/*'
-                  - !Sub 'arn:aws:wafv2:${AWS::Region}:${AWS::AccountId}:regional/webacl/*'
 
   FuseApiGatewayAccessPolicy:
     Type: AWS::IAM::Policy

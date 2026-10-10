@@ -2,8 +2,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Fuse: Cognitive Circuit Breaker for AWS Workloads.
-  Autonomous financial guardrail powered by EventBridge, Amazon Bedrock,
-  DynamoDB, and API Gateway stage throttling.
+  Autonomous financial guardrail powered by EventBridge, Amazon Bedrock (Nova Micro),
+  DynamoDB, and AWS WAFv2 IP Set surgical blocking.
 
 Globals:
   Function:
@@ -132,10 +132,20 @@ Resources:
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: N
+        - AttributeName: tenant_id
+          AttributeType: S
       GlobalSecondaryIndexes:
         - IndexName: environment-timestamp-index
           KeySchema:
             - AttributeName: environment
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: TenantIndex
+          KeySchema:
+            - AttributeName: tenant_id
               KeyType: HASH
             - AttributeName: timestamp
               KeyType: RANGE
@@ -172,7 +182,41 @@ Resources:
           Value: Human-In-The-Loop
 
   # =========================================================================
-  # 2. Control Plane: REST API Gateway
+  # 2. Identity & Access: Amazon Cognito User Pool (Zero Browser Secrets)
+  # =========================================================================
+  FuseUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: fuse-operator-user-pool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+
+  FuseUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: fuse-console-client
+      UserPoolId: !Ref FuseUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  # =========================================================================
+  # 3. Control Plane: REST API Gateway
   # =========================================================================
   ControlApi:
     Type: AWS::Serverless::Api
@@ -184,7 +228,12 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key'"
         AllowOrigin: !Sub "'${AllowedOrigin}'"
       Auth:
-        ApiKeyRequired: true
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt FuseUserPool.Arn
+            Identity:
+              Header: Authorization
         UsagePlan:
           CreateUsagePlan: PER_API
           UsagePlanName: fuse-control-api-usage-plan
@@ -384,7 +433,7 @@ Resources:
             Path: /incidents
             Method: GET
             Auth:
-              ApiKeyRequired: true
+              Authorizer: CognitoAuthorizer
 
   ApproveActionFunction:
     Type: AWS::Serverless::Function
@@ -421,7 +470,7 @@ Resources:
             Path: /incidents/{incident_id}/approve
             Method: POST
             Auth:
-              ApiKeyRequired: true
+              Authorizer: CognitoAuthorizer
         ApprovePathAlias:
           Type: Api
           Properties:
@@ -429,7 +478,7 @@ Resources:
             Path: /approve
             Method: POST
             Auth:
-              ApiKeyRequired: true
+              Authorizer: CognitoAuthorizer
 
   FuseTenantsTable:
     Type: AWS::DynamoDB::Table
@@ -538,3 +587,11 @@ Outputs:
   ControlApiKeyCommand:
     Description: AWS CLI command to fetch the secret API Key value.
     Value: !Sub "aws apigateway get-api-key --api-key ${ControlApiApiKey} --include-value"
+
+  UserPoolId:
+    Description: ID of the Cognito User Pool.
+    Value: !Ref FuseUserPool
+
+  UserPoolClientId:
+    Description: ID of the Cognito User Pool Client.
+    Value: !Ref FuseUserPoolClient

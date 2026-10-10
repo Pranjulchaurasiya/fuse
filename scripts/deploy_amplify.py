@@ -148,11 +148,11 @@ def main():
     if not operator_pw:
         missing_vars.append("OPERATOR_PASSWORD")
 
-    if missing_vars:
-        print("[!] ERROR: Missing required environment variable(s) for Amplify deployment:")
+    if not config_existed_before and missing_vars:
+        print("[!] ERROR: config.js does not exist and required environment variable(s) are missing:")
         for var in missing_vars:
             print(f"    - {var}")
-        print("\nPlease set all required environment variables:")
+        print("\nPlease set all required environment variables or create frontend/config.js:")
         print("  $env:CONTROL_API_BASE = 'https://<api-id>.execute-api.ap-south-1.amazonaws.com/prod'")
         print("  $env:API_KEY = '<your-control-api-key>'")
         print("  $env:OPERATOR_PASSWORD = '<your-operator-password>'")

@@ -29,8 +29,33 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key",
 }
+
+
+def emit_emf_metric(metric_name, value, unit="Count", dimensions=None):
+    """Emits high-cardinality CloudWatch Embedded Metric Format (EMF) logs for SIEM & CloudWatch Metrics."""
+    try:
+        dims = dimensions or {}
+        now_ms = int(time.time() * 1000)
+        dim_keys = list(dims.keys())
+        payload = {
+            "_aws": {
+                "Timestamp": now_ms,
+                "CloudWatchMetrics": [
+                    {
+                        "Namespace": "Fuse/Guardrail",
+                        "Dimensions": [dim_keys] if dim_keys else [],
+                        "Metrics": [{"Name": metric_name, "Unit": unit}]
+                    }
+                ]
+            },
+            metric_name: value,
+            **dims
+        }
+        print(json.dumps(payload))
+    except Exception as e:
+        logger.warning(f"Failed to emit EMF metric {metric_name}: {e}")
 
 
 def lambda_handler(event, context):
@@ -71,6 +96,13 @@ def lambda_handler(event, context):
     decision = str(body.get("decision", "APPROVED")).upper()
     now_epoch = int(time.time())
 
+    # Extract caller identity from Cognito Authorizer or request context
+    auth_claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
+    actor_email = auth_claims.get("email") or resolved_by
+    actor_sub = auth_claims.get("sub", "unauthenticated")
+    caller_tenant_id = auth_claims.get("custom:tenant_id")
+    client_ip = (event.get("requestContext") or {}).get("identity", {}).get("sourceIp", "unknown")
+
     # 3. Lookup item in ApprovalQueue or Incidents to get resource, stage, and source_ips
     resource = "guardrail-demo-api"
     stage = "prod"
@@ -85,15 +117,37 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.warning(f"Could not fetch ApprovalQueue item for {incident_id}: {e}")
 
-    if not source_ips:
-        try:
-            inc_item = incidents_table.get_item(Key={"incident_id": incident_id}).get("Item")
-            if inc_item and inc_item.get("source_ips"):
+    inc_item = None
+    try:
+        inc_item = incidents_table.get_item(Key={"incident_id": incident_id}).get("Item")
+        if inc_item and not source_ips:
+            if inc_item.get("source_ips"):
                 source_ips = inc_item.get("source_ips")
-            elif inc_item and inc_item.get("blocked_ips"):
+            elif inc_item.get("blocked_ips"):
                 source_ips = inc_item.get("blocked_ips")
-        except Exception as e:
-            logger.warning(f"Could not fetch Incidents item for {incident_id}: {e}")
+    except Exception as e:
+        logger.warning(f"Could not fetch Incidents item for {incident_id}: {e}")
+
+    # Enforce multi-tenant isolation (T-2.3):
+    if inc_item:
+        item_tenant = inc_item.get("tenant_id")
+        if item_tenant and item_tenant != "default":
+            if not caller_tenant_id or (caller_tenant_id != "admin" and item_tenant != caller_tenant_id):
+                logger.warning(f"Tenant isolation breach attempt: Caller tenant {caller_tenant_id} on item tenant {item_tenant}")
+                return {
+                    "statusCode": 403,
+                    "headers": CORS_HEADERS,
+                    "body": json.dumps({"error": "Forbidden", "message": "Incident belongs to another tenant"}),
+                }
+
+    audit_entry = {
+        "action": f"APPROVAL_{decision}",
+        "actor_identity": actor_email,
+        "actor_sub": actor_sub,
+        "client_ip": client_ip,
+        "timestamp_utc": now_epoch,
+        "decision": decision,
+    }
 
     throttled = False
 
@@ -122,21 +176,26 @@ def lambda_handler(event, context):
         # Update ApprovalQueue
         approval_table.update_item(
             Key={"approval_id": incident_id},
-            UpdateExpression="SET #st = :status, resolved_by = :by, resolved_at = :at",
+            UpdateExpression="SET #st = :status, resolved_by = :by, resolved_at = :at, actor_sub = :sub",
             ExpressionAttributeNames={"#st": "status"},
             ExpressionAttributeValues={
                 ":status": "APPROVED",
-                ":by": resolved_by,
+                ":by": actor_email,
                 ":at": now_epoch,
+                ":sub": actor_sub,
             },
         )
 
-        # Update Incidents table
+        # Update Incidents table with structured audit trail
         try:
             incidents_table.update_item(
                 Key={"incident_id": incident_id},
-                UpdateExpression="SET action_taken = :act",
-                ExpressionAttributeValues={":act": "APPROVED_AND_BLOCKED"},
+                UpdateExpression="SET action_taken = :act, audit_trail = list_append(if_not_exists(audit_trail, :empty_list), :audit_entry)",
+                ExpressionAttributeValues={
+                    ":act": "APPROVED_AND_BLOCKED",
+                    ":empty_list": [],
+                    ":audit_entry": [audit_entry],
+                },
             )
         except Exception as e:
             logger.warning(f"Failed to update Incidents table for {incident_id}: {e}")
@@ -145,19 +204,24 @@ def lambda_handler(event, context):
         logger.info(f"Decision REJECTED for incident {incident_id}. Skipping throttling.")
         approval_table.update_item(
             Key={"approval_id": incident_id},
-            UpdateExpression="SET #st = :status, resolved_by = :by, resolved_at = :at",
+            UpdateExpression="SET #st = :status, resolved_by = :by, resolved_at = :at, actor_sub = :sub",
             ExpressionAttributeNames={"#st": "status"},
             ExpressionAttributeValues={
                 ":status": "REJECTED",
-                ":by": resolved_by,
+                ":by": actor_email,
                 ":at": now_epoch,
+                ":sub": actor_sub,
             },
         )
         try:
             incidents_table.update_item(
                 Key={"incident_id": incident_id},
-                UpdateExpression="SET action_taken = :act",
-                ExpressionAttributeValues={":act": "REJECTED"},
+                UpdateExpression="SET action_taken = :act, audit_trail = list_append(if_not_exists(audit_trail, :empty_list), :audit_entry)",
+                ExpressionAttributeValues={
+                    ":act": "REJECTED",
+                    ":empty_list": [],
+                    ":audit_entry": [audit_entry],
+                },
             )
         except Exception as e:
             logger.warning(f"Failed to update Incidents table for {incident_id}: {e}")
@@ -173,6 +237,18 @@ def lambda_handler(event, context):
         "status": decision,
         "throttled": throttled,
     }
+
+    # Emit CloudWatch EMF Metric for SIEM & CloudWatch Dashboards
+    emit_emf_metric(
+        "OperatorApprovalDecision",
+        1,
+        unit="Count",
+        dimensions={
+            "Decision": decision,
+            "Resource": resource,
+            "Stage": stage,
+        }
+    )
 
     return {
         "statusCode": 200,

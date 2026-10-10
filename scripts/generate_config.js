@@ -11,7 +11,10 @@ const cfg = {
   CONTROL_API_BASE: process.env.CONTROL_API_BASE || '',
   API_KEY: process.env.API_KEY || '',
   TARGET_API_URL: process.env.TARGET_API_URL || '',
-  OPERATOR_PASSWORD: process.env.OPERATOR_PASSWORD || ''
+  OPERATOR_PASSWORD: process.env.OPERATOR_PASSWORD || '',
+  COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || 'ap-south-1_09wo36fcc',
+  COGNITO_CLIENT_ID: process.env.COGNITO_CLIENT_ID || '79gbbjcj2h5kji0ng2a6ua0llg',
+  AWS_REGION: process.env.AWS_REGION || 'ap-south-1'
 };
 
 const fileContent = `/**

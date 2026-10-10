@@ -1,10 +1,13 @@
-# Byte-compiled / optimized / DLL files
+# =========================================================================
+# Python Compiled & Optimization Artifacts
+# =========================================================================
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
+*.so
 .Python
+
+# Packaging & Distributions
 build/
 develop-eggs/
 dist/
@@ -23,11 +26,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Lambda deployment packages
+# Lambda Deployment Packages
 *.zip
 function.zip
 
-# Virtual Environments & Environment Secrets
+# Virtual Environments
 .env
 .env.*
 !.env.example
@@ -39,7 +42,19 @@ ENV/
 env.bak/
 venv.bak/
 
-# AWS Credentials & Secrets
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+*.py,cover
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# AWS Credentials, Secrets & Keys
 *credentials*
 *.pem
 *.key
@@ -47,19 +62,52 @@ venv.bak/
 secrets/
 client_secret*.json
 
-# IDE / Editor configs
+# OS Artifacts (macOS & Windows)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Thumbs.db:encryptable
+desktop.ini
+$RECYCLE.BIN/
+
+# IDE & Editor Configurations
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.bak
+*.tmp
+*.orig
 
-# Logs & temp
-*.log
-tmp/
-.DS_Store
+# SAM & CloudFormation Build Artifacts
+.aws-sam/
+template.packaged.yaml
+samconfig.local.toml
 
-# Demo video recordings & raw media (do not commit)
+# Terraform State Files (Legacy)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Frontend Local Configuration & Node
+node_modules/
+frontend/config.js
+config.js
+frontend/*.light.*
+.next/
+out/
+.parcel-cache/
+
+# Graphify Knowledge Graph Output
+graphify-out/
+
+# Demo Video Recordings, Raw Takes & Audio Media
 *.mp4
 *.mov
 *.webm
@@ -72,43 +120,30 @@ tmp/
 *.ogg
 *.webp
 *.ass
+*.srt
+*.vtt
+sample_voice.*
 github_full_repo.png
-# Media test scratch files
+
+# Media Test Scratch Files & Transcriptions
 test_speech.*
 test_*.mp3
 test_*.wav
 test_*.aac
-scripts/test_*_cues.py
-scratch_audio_build/
-scratch_real_voice_build/
 transcription.json
+scripts/test_*_cues.py
 recordings/
 videos/
 demo/
 raw_takes/
-# Temporary video & audio build scratch folders
+
+# Video/Audio Generation Scratch Directories
 scratch_*/
 audio_test_options/
 fuse-hyperframe-ad/
 example-product-promo/
 test-hyperframe/
-graphify-out/
-node_modules/
 
-# SAM build artifacts
-.aws-sam/
-
-# Frontend local configuration & backups
-frontend/config.js
-config.js
-frontend/*.light.*
-
-# Terraform state files
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-
-# Local private docs & enterprise specs (never committed)
+# Local Private Docs & Enterprise Specs (Never Committed)
 *.local.md
 local_*.md
