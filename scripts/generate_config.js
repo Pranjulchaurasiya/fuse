@@ -12,8 +12,8 @@ const cfg = {
   API_KEY: process.env.API_KEY || '',
   TARGET_API_URL: process.env.TARGET_API_URL || '',
   OPERATOR_PASSWORD: process.env.OPERATOR_PASSWORD || '',
-  COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || 'ap-south-1_09wo36fcc',
-  COGNITO_CLIENT_ID: process.env.COGNITO_CLIENT_ID || '79gbbjcj2h5kji0ng2a6ua0llg',
+  COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || 'ap-south-1_xNngm0Djj',
+  COGNITO_CLIENT_ID: process.env.COGNITO_CLIENT_ID || 'mjt670qcit4oqk6lvk776eblv',
   AWS_REGION: process.env.AWS_REGION || 'ap-south-1'
 };
 

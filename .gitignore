@@ -147,3 +147,7 @@ test-hyperframe/
 # Local Private Docs & Enterprise Specs (Never Committed)
 *.local.md
 local_*.md
+docs/PROJECT_GUIDE*
+scripts/export_guide.py
+*.docx
+*.pdf

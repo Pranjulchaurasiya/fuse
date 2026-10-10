@@ -195,7 +195,7 @@ Fuse verification is split between deterministic edge isolation unit suites and 
 | **Fuse Console** | `fuse-console` (`d1hndpgpwb40h8`) | [AWS Amplify Hosting (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; Amazon Cognito Zero-Secrets Auth Gate |
 | **Customer Onboarding** | `onboarding.html` | Cross-Account Role generator with 1-click CloudFormation link |
 | **Control Plane API** | `guardrail-control-api` (`noxx10mrwa`) | `https://noxx10mrwa.execute-api.ap-south-1.amazonaws.com/prod` &bull; Secured via Cognito Authorizer |
-| **Operator Auth Store** | `fuse-console-pool` (`ap-south-1_09wo36fcc`) | Amazon Cognito User Pool (`79gbbjcj2h5kji0ng2a6ua0llg`) &bull; Cryptographic JWT Authorizer |
+| **Operator Auth Store** | `fuse-console-pool` (`ap-south-1_xNngm0Djj`) | Amazon Cognito User Pool (`mjt670qcit4oqk6lvk776eblv`) &bull; Cryptographic JWT Authorizer |
 | **Protected Target API** | `guardrail-demo-api` (`poim5xmgs2`) | `https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items` |
 | **AWS WAFv2 WebACL** | `fuse-guardrail-acl` | Regional Web ACL managing surgical IP blocking |
 | **WAF IP Set** | `fuse-blocked-ips` | Regional IP Set holding blocked `/32` CIDR addresses |
