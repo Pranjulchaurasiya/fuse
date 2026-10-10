@@ -12,7 +12,8 @@ import math
 import os
 import re
 import time
-from collections import Counter
+import ipaddress
+from collections import Counter, defaultdict
 from datetime import datetime, timezone, timedelta
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -89,12 +90,33 @@ INCIDENTS_TABLE = os.environ.get("INCIDENTS_TABLE", "Incidents")
 CALLER_DOMINANCE_THRESHOLD = float(os.environ.get("CALLER_DOMINANCE_THRESHOLD", "0.85"))
 TENANTS_TABLE = os.environ.get('TENANTS_TABLE', 'Fuse_Tenants')
 MULTI_TENANT_ENABLED = os.environ.get('MULTI_TENANT_ENABLED', 'false').lower() == 'true'
+APPROVAL_QUEUE_TABLE = os.environ.get("APPROVAL_QUEUE_TABLE", "ApprovalQueue")
+SAFE_HARBOR_IPS = [ip.strip() for ip in os.environ.get("SAFE_HARBOR_IPS", "").split(",") if ip.strip()]
 cw_client = boto3.client("cloudwatch", region_name=REGION_NAME)
 logs_client = boto3.client("logs", region_name=REGION_NAME)
 lambda_client = boto3.client("lambda", region_name=REGION_NAME)
 sts_client = boto3.client('sts', region_name=REGION_NAME)
 ddb_client = boto3.resource("dynamodb", region_name=REGION_NAME)
 deployments_table = ddb_client.Table(DEPLOYMENTS_TABLE)
+
+
+def is_ip_in_safe_harbor(ip_str: str) -> bool:
+    """Checks if an IP matches any configured enterprise Safe Harbor CIDR or IP."""
+    if not ip_str or not SAFE_HARBOR_IPS:
+        return False
+    try:
+        target = ipaddress.ip_address(ip_str)
+        for safe in SAFE_HARBOR_IPS:
+            try:
+                net = ipaddress.ip_network(safe, strict=False)
+                if target in net:
+                    return True
+            except ValueError:
+                if ip_str == safe:
+                    return True
+    except ValueError:
+        return False
+    return False
 
 
 def check_deploy_heartbeat(resource_name: str, window_seconds: int = 900):
@@ -128,6 +150,7 @@ def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 3
     unique_ips = set()
     all_extracted_ips = []
     sample_payloads = []
+    caller_paths = defaultdict(set)
 
     try:
         # First attempt: Try filtered search for tagged API logs
@@ -163,27 +186,43 @@ def get_unique_callers_and_payloads(log_group_name: str, window_minutes: int = 3
                 unique_ips.add(ip)
                 all_extracted_ips.append(ip)
 
-            # Sample payload extraction if present
+            extracted_path = None
+            # Sample payload and path extraction if present
             try:
                 brace_idx = msg.find("{")
                 if brace_idx != -1:
                     data = json.loads(msg[brace_idx:])
+                    extracted_path = (
+                        data.get("path")
+                        or data.get("resourcePath")
+                        or data.get("rawPath")
+                        or data.get("requestContext", {}).get("path")
+                        or data.get("requestContext", {}).get("resourcePath")
+                    )
                     body = data.get("body")
                     if body:
                         str_body = body if isinstance(body, str) else json.dumps(body)
                         if str_body not in sample_payloads and len(sample_payloads) < 5:
                             sample_payloads.append(str_body)
             except Exception:
-                continue
+                pass
+
+            if not extracted_path:
+                clf_match = re.search(r'"(?:GET|POST|PUT|DELETE|PATCH|HEAD)\s+([^\s?]+)', msg)
+                if clf_match:
+                    extracted_path = clf_match.group(1)
+
+            if ip and extracted_path:
+                caller_paths[ip].add(extracted_path)
 
         caller_count = max(len(unique_ips), 1) if events else 1
         logger.info(
-            f"Extracted {len(unique_ips)} unique caller IPs ({len(all_extracted_ips)} occurrences) and {len(sample_payloads)} payloads."
+            f"Extracted {len(unique_ips)} unique caller IPs ({len(all_extracted_ips)} occurrences), {len(caller_paths)} mapped paths, and {len(sample_payloads)} payloads."
         )
-        return caller_count, sample_payloads, list(unique_ips), all_extracted_ips
+        return caller_count, sample_payloads, list(unique_ips), all_extracted_ips, dict(caller_paths)
     except Exception as e:
         logger.warning(f"Could not query logs from {log_group_name}: {e}")
-        return 1, [], [], []
+        return 1, [], [], [], {}
 
 
 
@@ -439,7 +478,7 @@ def lambda_handler(event, context):
     recent_deploy, deploy_note, deployment_id = check_deploy_heartbeat(API_NAME, window_seconds=WINDOW_MINUTES * 60)
 
     # 3. Extract real unique callers and sample payloads from demo API CloudWatch logs
-    unique_caller_count, sample_payloads, unique_ips, all_extracted_ips = get_unique_callers_and_payloads(
+    unique_caller_count, sample_payloads, unique_ips, all_extracted_ips, caller_paths = get_unique_callers_and_payloads(
         DEMO_TARGET_LOG_GROUP, window_minutes=WINDOW_MINUTES
     )
     caller_diversity_score = round(float(unique_caller_count) / max(current_count, 1), 4)
@@ -519,34 +558,48 @@ def lambda_handler(event, context):
     )
     is_post_deploy = recent_deploy  # Recent deploy + spike = likely code bug
 
+    # Target specific measured offenders; if none isolated, fallback to unique_ips
+    target_block_ips = dominant_offender_ips if dominant_offender_ips else unique_ips
+
+    # --- NAT and Safe Harbor Protection Logic ---
+    is_safe_harbor = any(is_ip_in_safe_harbor(ip) for ip in target_block_ips)
+    
+    # Calculate URI path cardinality (entropy) for the dominant candidate IP(s)
+    # 500 users behind a NAT hit diverse paths (/items, /login, /cart, /reports)
+    # A runaway loop hits 1 single endpoint continuously
+    max_distinct_paths = max((len(caller_paths.get(ip, set())) for ip in target_block_ips), default=1)
+    is_likely_nat = (max_distinct_paths >= 3)
+
     classification = "NORMAL"
     reason_parts = []
 
     if is_single_caller_dominant:
-        classification = "RUNAWAY"
-        if dominant_offender_ips:
-            top_offender = dominant_offender_ips[0]
-            top_count = ip_counter[top_offender]
-            top_share = round((top_count / max(total_observed_occurrences, 1)) * 100, 1)
-            reason_parts.append(
-                f"Dominant caller {top_offender} drove {top_count}/{total_observed_occurrences} requests ({top_share}%)"
-            )
+        if is_safe_harbor:
+            classification = "SAFE_HARBOR_EXEMPT"
+            reason_parts.append(f"Safe Harbor enterprise IP ({', '.join(target_block_ips)}) detected. Auto-block bypassed; routed to ApprovalQueue.")
+        elif is_likely_nat:
+            classification = "NAT_TRAFFIC_SUSPECTED"
+            reason_parts.append(f"Likely corporate NAT: dominant IP {target_block_ips[0]} accessed {max_distinct_paths} distinct URI paths. Auto-block bypassed to preserve multi-user availability; routed to ApprovalQueue.")
         else:
-            reason_parts.append(f"Low caller diversity detected (diversity={caller_diversity_score}, callers={unique_caller_count})")
+            classification = "RUNAWAY"
+            if dominant_offender_ips:
+                top_offender = dominant_offender_ips[0]
+                top_count = ip_counter[top_offender]
+                top_share = round((top_count / max(total_observed_occurrences, 1)) * 100, 1)
+                reason_parts.append(
+                    f"Dominant caller {top_offender} drove {top_count}/{total_observed_occurrences} requests ({top_share}%)"
+                )
+            else:
+                reason_parts.append(f"Low caller diversity detected (diversity={caller_diversity_score}, callers={unique_caller_count})")
 
-    if is_post_deploy and is_single_caller_dominant:
+    if is_post_deploy and is_single_caller_dominant and classification == "RUNAWAY":
         reason_parts.append(f"Post-deploy spike correlated with caller anomaly (deploy note: {deploy_note})")
-        classification = "RUNAWAY"  # reinforces
 
-    if z_score > 5.0 and unique_caller_count <= 2:
-        classification = "RUNAWAY"
+    if z_score > 5.0 and unique_caller_count <= 2 and classification == "RUNAWAY":
         reason_parts.append(f"Extreme Z-score ({z_score}) with very low caller diversity ({unique_caller_count} callers)")
 
     decision_reason = "; ".join(reason_parts) if reason_parts else f"Statistical anomaly (Z={z_score}) but healthy caller diversity ({unique_caller_count} callers) — likely organic surge"
     logger.info(f"DETERMINISTIC_CLASSIFICATION: {classification} — {decision_reason}")
-
-    # Target specific measured offenders; if none isolated, fallback to unique_ips
-    target_block_ips = dominant_offender_ips if dominant_offender_ips else unique_ips
 
     # 7. Act on classification
     remediation_result = None
@@ -557,6 +610,9 @@ def lambda_handler(event, context):
     payload["classification"] = classification
     payload["decision_reason"] = decision_reason
     payload["source_ips"] = target_block_ips
+    payload["is_safe_harbor"] = is_safe_harbor
+    payload["is_likely_nat"] = is_likely_nat
+    payload["distinct_paths_count"] = max_distinct_paths
 
     if classification == "RUNAWAY" and target_block_ips:
         logger.info(f"RUNAWAY detected. Invoking Remediator to block IPs: {target_block_ips}")
@@ -581,6 +637,47 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error(f"Failed to invoke Remediator: {e}", exc_info=True)
             action_taken = "BLOCK_FAILED"
+
+    elif classification in ("SAFE_HARBOR_EXEMPT", "NAT_TRAFFIC_SUSPECTED") and target_block_ips:
+        logger.info(f"{classification}: Routing {target_block_ips} to ApprovalQueue instead of WAF block.")
+        try:
+            approval_table = ddb_client.Table(APPROVAL_QUEUE_TABLE)
+            approval_table.put_item(
+                Item={
+                    "approval_id": incident_id,
+                    "resource": API_NAME,
+                    "stage": STAGE_NAME,
+                    "timestamp": now_epoch,
+                    "source_ips": target_block_ips,
+                    "status": "PENDING_APPROVAL",
+                    "reason": decision_reason,
+                    "classification": classification,
+                    "is_safe_harbor": is_safe_harbor,
+                    "is_likely_nat": is_likely_nat,
+                    "distinct_paths_count": max_distinct_paths,
+                }
+            )
+            # Record in incidents table as PENDING_APPROVAL
+            incidents_tbl = ddb_client.Table(INCIDENTS_TABLE)
+            incidents_tbl.put_item(
+                Item={
+                    "incident_id": incident_id,
+                    "timestamp": now_epoch,
+                    "resource": API_NAME,
+                    "environment": STAGE_NAME,
+                    "classification": classification,
+                    "action_taken": "PENDING_APPROVAL",
+                    "source_ips": target_block_ips,
+                    "decision_reason": decision_reason,
+                    "is_safe_harbor": is_safe_harbor,
+                    "is_likely_nat": is_likely_nat,
+                    "distinct_paths_count": max_distinct_paths,
+                }
+            )
+            action_taken = "PENDING_APPROVAL"
+        except Exception as e:
+            logger.error(f"Failed to route to ApprovalQueue: {e}", exc_info=True)
+            action_taken = "QUEUE_FAILED"
 
     # 8. Optional Bedrock enrichment (non-blocking, fire-and-forget)
     enrichment_result = None

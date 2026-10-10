@@ -141,6 +141,71 @@ class TestFusePreFilterGate(unittest.TestCase):
         self.assertEqual(z_score, 999.0)
         print("[PASS] Mathematical Verification: compute_baseline_and_delta logic validated.")
 
+    def test_is_ip_in_safe_harbor_helper(self):
+        """Verify Safe Harbor IP and CIDR matching."""
+        handler.SAFE_HARBOR_IPS = ["10.0.0.0/8", "192.168.1.100"]
+        self.assertTrue(handler.is_ip_in_safe_harbor("10.5.2.1"))
+        self.assertTrue(handler.is_ip_in_safe_harbor("10.254.254.254"))
+        self.assertTrue(handler.is_ip_in_safe_harbor("192.168.1.100"))
+        self.assertFalse(handler.is_ip_in_safe_harbor("192.168.1.101"))
+        self.assertFalse(handler.is_ip_in_safe_harbor("203.0.113.5"))
+        self.assertFalse(handler.is_ip_in_safe_harbor("invalid-ip"))
+        self.assertFalse(handler.is_ip_in_safe_harbor(""))
+        print("[PASS] Safe Harbor CIDR and exact IP resolution verified.")
+
+    def test_safe_harbor_exemption_bypasses_block_and_queues(self):
+        """Path 4: Severe spike from Safe Harbor IP -> SAFE_HARBOR_EXEMPT, routed to ApprovalQueue."""
+        mock_metrics = [850, 62, 58, 65, 60, 57, 61, 59, 63]
+        handler.cw_client.get_metric_data.return_value = self.mock_cloudwatch_response(mock_metrics)
+        handler.SAFE_HARBOR_IPS = ["192.168.1.0/24"]
+
+        mock_event = {"api_id": "test-api-123", "stage": "prod"}
+        response = handler.lambda_handler(mock_event, None)
+        body = response.get("body", {})
+
+        self.assertEqual(response.get("statusCode"), 200)
+        self.assertEqual(body.get("status"), "ANOMALY_EVALUATED")
+        self.assertEqual(body.get("classification"), "SAFE_HARBOR_EXEMPT")
+        self.assertEqual(body.get("action_taken"), "PENDING_APPROVAL")
+        self.assertTrue(body.get("poller_payload", {}).get("is_safe_harbor"))
+        # Remediator (WAF block) must NOT be invoked
+        handler.lambda_client.invoke.assert_not_called()
+        # DynamoDB put_item should be called for ApprovalQueue and Incidents
+        self.assertTrue(handler.ddb_client.Table.return_value.put_item.called)
+        print("[PASS] Path 4: Safe Harbor IP bypassed WAF block and routed to ApprovalQueue.")
+
+    def test_high_path_cardinality_nat_bypasses_block_and_queues(self):
+        """Path 5: Severe spike from single IP with >= 3 distinct paths -> NAT_TRAFFIC_SUSPECTED, routed to ApprovalQueue."""
+        mock_metrics = [850, 62, 58, 65, 60, 57, 61, 59, 63]
+        handler.cw_client.get_metric_data.return_value = self.mock_cloudwatch_response(mock_metrics)
+        handler.SAFE_HARBOR_IPS = []  # Not in safe harbor
+
+        # Simulate 4 corporate employees hitting distinct endpoints behind one corporate NAT IP
+        handler.logs_client.filter_log_events.return_value = {
+            "events": [
+                {"message": 'DEMO_API_REQUEST {"caller":"198.51.100.25","path":"/login"}'},
+                {"message": 'DEMO_API_REQUEST {"caller":"198.51.100.25","path":"/catalog"}'},
+                {"message": 'DEMO_API_REQUEST {"caller":"198.51.100.25","path":"/cart"}'},
+                {"message": 'DEMO_API_REQUEST {"caller":"198.51.100.25","path":"/checkout"}'},
+            ]
+        }
+
+        mock_event = {"api_id": "test-api-123", "stage": "prod"}
+        response = handler.lambda_handler(mock_event, None)
+        body = response.get("body", {})
+
+        self.assertEqual(response.get("statusCode"), 200)
+        self.assertEqual(body.get("status"), "ANOMALY_EVALUATED")
+        self.assertEqual(body.get("classification"), "NAT_TRAFFIC_SUSPECTED")
+        self.assertEqual(body.get("action_taken"), "PENDING_APPROVAL")
+        self.assertTrue(body.get("poller_payload", {}).get("is_likely_nat"))
+        self.assertGreaterEqual(body.get("poller_payload", {}).get("distinct_paths_count", 0), 3)
+        # Remediator (WAF block) must NOT be invoked
+        handler.lambda_client.invoke.assert_not_called()
+        # DynamoDB put_item should be called for ApprovalQueue and Incidents
+        self.assertTrue(handler.ddb_client.Table.return_value.put_item.called)
+        print("[PASS] Path 5: High path-entropy NAT traffic bypassed WAF block and routed to ApprovalQueue.")
+
 
 if __name__ == "__main__":
     unittest.main()

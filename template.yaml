@@ -94,6 +94,11 @@ Parameters:
     Default: 0.85
     Description: Threshold for single-caller dominance detection.
 
+  SafeHarborIps:
+    Type: String
+    Default: ""
+    Description: Comma-separated list of IPv4 addresses or CIDR blocks exempt from automated WAF blocking (routed to ApprovalQueue).
+
 Resources:
   # =========================================================================
   # 1. State Store: DynamoDB Tables (Auto-Named for Isolation)
@@ -349,6 +354,8 @@ Resources:
           BEDROCK_ENRICHMENT_ENABLED: "true"
           TENANTS_TABLE: !Ref FuseTenantsTable
           MULTI_TENANT_ENABLED: 'false'
+          APPROVAL_QUEUE_TABLE: !Ref ApprovalQueueTable
+          SAFE_HARBOR_IPS: !Ref SafeHarborIps
       Policies:
         - Statement:
             - Sid: CloudWatchMetricAccess
@@ -386,7 +393,13 @@ Resources:
               Action:
                 - dynamodb:Scan
                 - dynamodb:UpdateItem
+                - dynamodb:PutItem
               Resource: !GetAtt IncidentsTable.Arn
+            - Sid: ApprovalQueuePutAccess
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt ApprovalQueueTable.Arn
             - Sid: TenantsTableScanAccess
               Effect: Allow
               Action:
