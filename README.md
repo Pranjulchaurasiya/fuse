@@ -7,7 +7,7 @@
 
 [![Live Console](https://img.shields.io/badge/Live_Console-AWS_Amplify_Hosting_(HTTPS)-blue?style=for-the-badge&logo=awsamplify)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![CI/CD Validation](https://img.shields.io/badge/CI%2FCD-GitHub_Actions_Gated-brightgreen?style=for-the-badge&logo=githubactions)](https://github.com/Pranjulchaurasiya/fuse/actions/workflows/deploy.yml)
-[![Product Walkthrough](https://img.shields.io/badge/Walkthrough-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/UWzPBdO63ek)
+[![Cognito Zero Secrets](https://img.shields.io/badge/Auth-Cognito_JWT_Authorizer-success?style=for-the-badge&logo=amazoncognito)](https://aws.amazon.com/cognito/)
 [![AWS Region](https://img.shields.io/badge/Region-ap--south--1_(Mumbai)-orange?style=for-the-badge&logo=amazonwebservices)](https://main.d1hndpgpwb40h8.amplifyapp.com)
 [![Amazon Bedrock](https://img.shields.io/badge/Bedrock-Converse_toolConfig-violet?style=for-the-badge&logo=amazonbedrock)](https://aws.amazon.com/bedrock/)
 [![AWS WAFv2](https://img.shields.io/badge/Remediation-WAFv2_IPSet_Surgical_Block-red?style=for-the-badge&logo=awswaf)](https://aws.amazon.com/waf/)
@@ -15,7 +15,7 @@
 ---
 
 ## Live Platform & Verification
-- **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Protected via Operator Session Gate)*
+- **Live Landing Page & Console**: [https://main.d1hndpgpwb40h8.amplifyapp.com](https://main.d1hndpgpwb40h8.amplifyapp.com) *(Secured with Amazon Cognito Cryptographic JWT Auth & Zero-Secrets Architecture)*
 - **Customer Onboarding (Live)**: [https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html](https://main.d1hndpgpwb40h8.amplifyapp.com/onboarding.html) &mdash; 1-click Cross-Account IAM CloudFormation onboarding without sharing any AWS credentials.
 - **Product Walkthrough (2m 58s)**: [https://youtu.be/UWzPBdO63ek](https://youtu.be/UWzPBdO63ek) &mdash; full end-to-end demonstration featuring live anomaly detection, human-in-the-loop approval, and surgical WAF mitigation.
 - **Every AWS resource ID in this README is real and independently checkable** &mdash; see Section 05 for exact names/IDs
@@ -39,7 +39,7 @@ Observe → Reason & Classify → Isolate (WAF IP Block) → Auto-Recover (Coold
 * **Onboard**: Customer launches `fuse-cross-account-role.yaml` in their AWS account, granting scoped read (CloudWatch) and write (WAFv2 IP Set) permissions to Fuse's account (`515903395012`).
 * **Observe**: EventBridge triggers `guardrail-poller` every 60s, querying tenant CloudWatch metrics and log streams out-of-band.
 * **Reason**: Anomaly Z-score & caller dominance tests run deterministically; Bedrock provides asynchronous, structured narrative enrichment.
-* **Isolate**: Offending IP addresses are dynamically added to a regional AWS WAFv2 IP Set, surgically dropping runaway loops with HTTP 403 while allowing traffic from other caller IPs to proceed uninterrupted (shared NAT/VPN IP pooling caveat applies).
+* **Isolate**: Offending IP addresses are dynamically added to a regional AWS WAFv2 IP Set, surgically dropping runaway loops with HTTP 403 while allowing traffic from other caller IPs to proceed uninterrupted. Suspected Corporate NAT gateways and enterprise Safe Harbor IPs are routed to the Approval Queue without blocking.
 * **Auto-Recover**: Stale IP blocks automatically expire and unblock after a configurable cooldown window (default: 15 min).
 
 ---
@@ -50,18 +50,20 @@ Serverless auto-scaling hides runaway loops. An infinite client retry loop, expo
 
 Traditional CloudWatch static alarms (*"if requests > 100/min then alarm"*) create an impossible operational tradeoff:
 * **False Positives**: During a legitimate marketing launch or flash sale with 1,000 unique buyers, a static alarm trips and throttles paying customers.
+* **Collateral Damage (The Corporate NAT Problem)**: If 500 employees behind a single corporate egress NAT generate a volume surge, naive IP blocks take down an entire enterprise client.
 * **Slow Remediation**: By the time an on-call engineer wakes up, reads an SNS email, and manually updates stage throttling, the damage is already done.
 
 ### Strategy vs. Production Outcome
 
-| Defense Strategy | Legitimate Flash Surge (1,000 unique callers) | Recursive Runaway Loop (1 caller, rapid retries) | Production Outcome |
-| :--- | :---: | :---: | :--- |
-| **No Guardrail** | Normal operation | Thousands of dollars billed in minutes | Unbounded financial liability |
-| **Naive Static Alarm** (`Count > 100`) | **Tripped & Throttled (False Outage)** | Throttled (after alert delay) | Kills revenue during marketing launches |
-| **Global Stage Throttle** | Preserves system | Kills ALL users (Collateral Damage) | Total outage for paying customers |
-| **Fuse (Cognitive WAF Breaker)** | **Passed (Baseline preserved)** | **Offending IP Blocked in WAF** | **Surgical IP-level isolation (shared NAT/VPN caveat applies)** |
+| Defense Strategy | Legitimate Flash Surge (1,000 callers) | Recursive Runaway Loop (1 caller, 1 endpoint) | Corporate NAT Gateway (500 users, 1 IP, diverse paths) | Production Outcome |
+| :--- | :---: | :---: | :---: | :--- |
+| **No Guardrail** | Normal operation | Thousands billed in minutes | Thousands billed in minutes | Unbounded financial liability |
+| **Naive Static Alarm** (`Count > 100`) | **Tripped & Throttled (False Outage)** | Throttled (after alert delay) | Throttled (False Outage) | Kills revenue during marketing launches |
+| **Global Stage Throttle** | Preserves system | Kills ALL users (Collateral Damage) | Kills ALL users (Collateral Damage) | Total outage for paying customers |
+| **Naive IP WAF Block** | Passed | Offending IP Blocked | **Blocked (All 500 Enterprise Users Cut Off)** | High collateral damage on shared proxies |
+| **Fuse (Cognitive WAF Breaker)** | **Passed (Baseline preserved)** | **Offending IP Blocked in WAF** | **Bypasses WAF Block & Queues for Approval** | **Surgical isolation + zero NAT collateral damage** |
 
-**Fuse** solves this by evaluating multi-dimensional context: **caller diversity**, **traffic deltas**, and **deployment heartbeats** with deterministic statistical analysis and Amazon Bedrock, dropping runaway caller IPs at the **AWS WAFv2** edge in seconds without disrupting legitimate traffic.
+**Fuse** solves this by evaluating multi-dimensional context: **caller diversity**, **URI path entropy**, **traffic deltas**, and **deployment heartbeats** with deterministic statistical analysis and Amazon Bedrock, dropping runaway caller IPs at the **AWS WAFv2** edge in seconds without disrupting legitimate traffic.
 
 ---
 
@@ -117,31 +119,38 @@ Customers never provide IAM access keys. Onboarding generates a unique `External
 Unlike crude stage throttles (`RateLimit -> 0`) that shut down entire APIs and punish paying customers during an incident, Fuse acts surgically:
 * Identifies offending caller IPs responsible for runaway traffic loops
 * Appends offending IPs (`/32`) into AWS WAFv2 IP Sets (`fuse-blocked-ips`)
-* Returns immediate **HTTP 403 Forbidden** to the bad actor while preserving **HTTP 200** flow for non-offending caller IPs (with shared NAT/VPN co-location caveat noted).
+* Returns immediate **HTTP 403 Forbidden** to the bad actor while preserving **HTTP 200** flow for non-offending caller IPs.
 
-### 3. Automated Cooldown & Self-Healing (Auto-Recovery)
+### 3. Dual-Tier Corporate NAT & Enterprise Safe Harbor Protection
+Surgical IP blocking on shared corporate networks can accidentally take down hundreds of users sharing a single gateway IP. Fuse introduces a dual-tier protection mechanism:
+* **Tier 1 (Safe Harbor Allowlist)**: Configurable `SAFE_HARBOR_IPS` environment parameter accepts CIDR subnets (e.g. `198.51.100.0/24`) and IP addresses for enterprise partners, VPNs, or internal microservices. Spikes from these IPs are classified as `SAFE_HARBOR_EXEMPT` and bypass automated WAF blocking.
+* **Tier 2 (URI Path Cardinality Entropy Check)**: A runaway code loop hammers **1 single endpoint** continuously (e.g., `GET /items`). In contrast, 500 corporate employees behind a single NAT gateway access **$\ge 3$ distinct endpoints** (e.g., `/login`, `/catalog`, `/cart`, `/checkout`).
+* **Non-Destructive Routing**: When an anomaly matches Safe Harbor or exhibits high path entropy ($\ge 3$ paths), Fuse classifies it as `NAT_TRAFFIC_SUSPECTED`, leaves the WAF open, and routes the incident to the DynamoDB `ApprovalQueue` with action `PENDING_APPROVAL` for operator review.
+
+### 4. Automated Cooldown & Self-Healing (Auto-Recovery)
 Incidents are not permanent locks. The poller monitors active IP blocks and automatically purges expired IP addresses after a configurable cooldown window (`RECOVERY_WINDOW_MINUTES`, default: 15 min), safely returning the system to normal operations.
 
-### 4. Deterministic Statistical Gating with Bedrock Enrichment
+### 5. Deterministic Statistical Gating with Bedrock Enrichment
 To ensure sub-second response times and eliminate hallucination risk on fast paths:
 * **Detection & Remediation**: Run purely deterministically in Python via Z-scores, standard deviations, and caller dominance metrics.
 * **Amazon Bedrock (Nova Micro)**: Invoked asynchronously for non-blocking contextual narrative summaries and audit logs without impeding remediation latency.
 
-### 5. Real-Time Channel Alerting (Slack & Discord)
+### 6. Real-Time Channel Alerting (Slack & Discord)
 Circuit breaker trips and unblock recovery events dispatch formatted webhook alerts in sub-second time:
 * **Rich Embeds**: Posts target IP addresses (`/32`), API resources, incident IDs, and measured anomaly rationale (*"Dominant runaway caller 203.0.113.42 drove 96/100 requests (96.0%)"*).
 * **Multi-Tenant Routing**: Customers configure their own incoming webhook URL during onboarding, allowing incident notifications to post directly into their organization's internal `#devops` or `#alerts` channels.
 * **Non-Blocking Delivery**: Webhook dispatch is asynchronous with strict 3-second timeouts, guaranteeing zero disruption to the primary WAF mitigation path.
 
-### 6. Operator Session Lock Screen
-The dashboard console features a client-side operator session gate (`auth.js`) to prevent casual shoulder-surfing of incident logs during live demonstrations. Note that client-side localStorage gates are not cryptographic boundaries; an enterprise Cognito/JWT interface stub is provided in `frontend/auth.js` for production authorizer integration.
+### 7. Zero-Secrets Cryptographic Auth & Human-in-the-Loop (HITL) Gate
+* **Amazon Cognito User Pools**: Operator dashboard authentication uses Amazon Cognito (`ap-south-1_09wo36fcc`) with short-lived JWT ID tokens validated by API Gateway's `CognitoAuthorizer`. Zero static API keys or cloud credentials reside in browser storage.
+* **Human-in-the-Loop Approval Queue**: For ambiguous anomalies or suspected corporate NAT traffic, operators can review telemetry and trigger one-click approval or manual unblock via the control API (`/incidents/{incident_id}/approve`).
 
-### 7. Layered Defense-in-Depth (Native WAF + Bedrock Poller)
+### 8. Layered Defense-in-Depth (Native WAF + Bedrock Poller)
 Fuse uses a two-tier strategy to eliminate detection lag:
 * **Tier 1 (Instant Edge Flood Cap)**: Native AWS WAF Rate-Based Rule (`fuse-emergency-burst-cap`) drops violent floods (>500 reqs/5min per IP) at the regional edge within seconds.
 * **Tier 2 (Cognitive Poller + Bedrock Sentinel)**: Inspects subtle, low-frequency runaway retry loops (90 reqs/min) that bypass static rate rules over a 15-minute statistical window and orchestrates automated self-healing.
 
-### 8. End-to-End Time-to-Block & Propagation Breakdown
+### 9. End-to-End Time-to-Block & Propagation Breakdown
 
 | Phase | Subsystem | Latency / Window | Operational Optimization |
 | :--- | :--- | :--- | :--- |
@@ -154,10 +163,10 @@ Fuse uses a two-tier strategy to eliminate detection lag:
 
 **Total Out-of-Band Time-to-Block:** **~62 to 65 seconds** (*illustrative estimate:* caps a runaway ~500 req/s serverless compute loop to ~$1-$3 within ~1 min, assuming standard API Gateway + Lambda execution pricing, compared to unbounded accumulation over hours before static budget alert notifications) while maintaining **0ms added latency** on healthy API requests.
 
-### 9. Threat Model & Operational Boundaries
+### 10. Threat Model & Operational Boundaries
 * **60s CloudWatch Metric Lag**: CloudWatch publishes API Gateway metric data in 1-minute aggregations. The Tier-1 native rate rule provides immediate edge buffering during the aggregation interval.
 * **Log Ingestion Tuning**: Querying CloudWatch Logs uses strict server-side timestamp filtering (`startTime`) and pattern gating (`filterPattern`) to prevent Lambda timeout during high-volume spikes.
-* **Shared NAT/VPN IP Boundaries**: When multiple clients share an egress proxy IP, surgical IP blocking temporarily affects co-located users. Production v2 roadmaps introduce per-JWT claim / API Key targeted throttling.
+* **Shared NAT/VPN IP Boundaries**: Mitigated via URI path cardinality entropy checks ($\ge 3$ distinct endpoints) and CIDR Safe Harbor allowlisting. High-entropy candidate IPs are queued for human approval rather than automatically blocked.
 
 ---
 
@@ -167,7 +176,8 @@ Fuse verification is split between deterministic edge isolation unit suites and 
 
 | Script | Command | Purpose & Expected Verification |
 | :--- | :--- | :--- |
-| **Poller Sentinel Unit** | `python scripts/test_prefilter_gate.py` | Validates volume floor, deterministic Z-score variance (Z &ge; 2.5), caller dominance (> 85%), and Remediator invocation. |
+| **Poller Sentinel Unit** | `python scripts/test_prefilter_gate.py` | Validates volume floor, Z-score variance, caller dominance, Safe Harbor CIDR bypass, and NAT path entropy checks (7 automated tests). |
+| **IAM Least-Privilege Audit** | `python scripts/check_iam_coverage.py` | Scans 15 boto3 API methods across runtime code and verifies 100% least-privilege IAM coverage across SAM and customer CloudFormation templates. |
 | **WAF Remediator Unit** | `python scripts/test_remediator.py` | Validates WAF IPSet mutation (`update_ip_set`), idempotency (`ALREADY_BLOCKED`), and cooldown unblock flow. |
 | **Reasoner Enrichment Unit** | `python scripts/test_reasoner.py` | Validates async Bedrock enrichment, structured JSON payload output, and fail-closed fallback to RUNAWAY on timeout. |
 | **Scenario 1: Legit Traffic** | `python scripts/load_test_legit.py` | Sends 35 requests across distinct simulated callers &rarr; Poller measures high caller entropy &rarr; Baseline preserved, zero WAF blocking. |
@@ -182,18 +192,19 @@ Fuse verification is split between deterministic edge isolation unit suites and 
 
 | Component | AWS Resource Name | Type / Endpoint |
 | :--- | :--- | :--- |
-| **Fuse Console** | `fuse-console` (`d1hndpgpwb40h8`) | [AWS Amplify Hosting (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; Operator Session Gate |
+| **Fuse Console** | `fuse-console` (`d1hndpgpwb40h8`) | [AWS Amplify Hosting (HTTPS)](https://main.d1hndpgpwb40h8.amplifyapp.com) &bull; Amazon Cognito Zero-Secrets Auth Gate |
 | **Customer Onboarding** | `onboarding.html` | Cross-Account Role generator with 1-click CloudFormation link |
-| **Control Plane API** | `guardrail-control-api` (`agcki2mnvi`) | `https://agcki2mnvi.execute-api.ap-south-1.amazonaws.com/prod` |
+| **Control Plane API** | `guardrail-control-api` (`noxx10mrwa`) | `https://noxx10mrwa.execute-api.ap-south-1.amazonaws.com/prod` &bull; Secured via Cognito Authorizer |
+| **Operator Auth Store** | `fuse-console-pool` (`ap-south-1_09wo36fcc`) | Amazon Cognito User Pool (`79gbbjcj2h5kji0ng2a6ua0llg`) &bull; Cryptographic JWT Authorizer |
 | **Protected Target API** | `guardrail-demo-api` (`poim5xmgs2`) | `https://poim5xmgs2.execute-api.ap-south-1.amazonaws.com/prod/items` |
 | **AWS WAFv2 WebACL** | `fuse-guardrail-acl` | Regional Web ACL managing surgical IP blocking |
 | **WAF IP Set** | `fuse-blocked-ips` | Regional IP Set holding blocked `/32` CIDR addresses |
-| **DynamoDB State** | `Incidents`, `Fuse_Tenants`, `Deployments` | Amazon DynamoDB (Pay-per-request) |
-| **Sentinel Reasoner** | `guardrail-reasoner` | AWS Lambda (Python 3.12, Bedrock Converse async enrichment) |
-| **Circuit Remediator** | `guardrail-remediator` | AWS Lambda (Python 3.12, WAFv2 IP Set modifier) |
-| **Metrics Poller** | `guardrail-poller` | AWS Lambda (Python 3.12, multi-tenant scanner & dispatcher) |
-| **Onboarding API** | `guardrail-onboarding` | AWS Lambda fronted by `/tenants` and `/tenants/{id}/verify` |
-| **Incidents Query** | `guardrail-get-incidents` | AWS Lambda fronted by `/incidents` |
+| **DynamoDB State** | `Incidents`, `Fuse_Tenants`, `Deployments`, `ApprovalQueue` | Amazon DynamoDB (Pay-per-request, Point-in-Time Recovery enabled) |
+| **Sentinel Reasoner** | `fuse-guardrail-reasoner` | AWS Lambda (Python 3.12, Bedrock Converse async enrichment) |
+| **Circuit Remediator** | `fuse-guardrail-remediator` | AWS Lambda (Python 3.12, WAFv2 IP Set modifier) |
+| **Metrics Poller** | `fuse-guardrail-poller` | AWS Lambda (Python 3.12, multi-tenant scanner, NAT entropy checker) |
+| **Onboarding API** | `fuse-guardrail-onboarding` | AWS Lambda fronted by `/tenants` and `/tenants/{id}/verify` |
+| **Incidents Query** | `fuse-guardrail-get-incidents` | AWS Lambda fronted by `/incidents` |
 
 ---
 
@@ -288,26 +299,27 @@ python mcp_server.py
 
 ---
 
-## 08 / Security Notes & Frontend Setup
+## 08 / Security Architecture & Zero-Secrets Configuration
 
-### Security Notes (Developer Preview vs. Enterprise Production)
-* **Client-Side Operator Gate (`auth.js`)**: The password lock screen and localStorage session token in `frontend/auth.js` provide a convenient presentation-layer barrier during hackathons and interactive demos. It is **not** a cryptographic security boundary against reverse engineering or direct API inspection. An enterprise interface stub (`cognitoAuthStub` in `frontend/auth.js`) is included to wire production Cognito JWT tokens directly into the API Gateway Authorizer.
-* **Browser-Side API Key is Developer-Preview Only**: The client-side configuration (`config.js`) passes an API key in the browser environment. This pattern is designed for developer evaluation and initial deployment testing.
-* **CORS Does Not Stop Non-Browser Traffic (`curl`)**: Scoped CORS headers (`AllowedOrigin`) prevent unauthorized cross-origin browser requests, but they do NOT restrict command-line tools like `curl`, Postman, or automated scripts if an attacker obtains the API key.
-* **Production Authentication Architecture**: Production enterprise deployments can eliminate static browser-side API keys in favor of **Amazon Cognito User Pools** (authenticated JWT tokens validated via API Gateway Cognito Authorizers) or **AWS IAM SigV4** authorization mapped to least-privilege IAM roles.
+### Production Security Architecture (Amazon Cognito Zero-Secrets)
+* **Cryptographic Identity Verification**: The Fuse operator console authenticates directly against **Amazon Cognito User Pools** (`ap-south-1_09wo36fcc`) using secure browser-native Web Crypto. Operators log in with their Cognito credentials and receive short-lived, signed JWT identity tokens.
+* **Zero Static Secrets in Browser**: Unlike naive dashboards that embed hardcoded API keys or long-lived admin credentials in client-side bundles, Fuse's frontend has **zero embedded secrets** (`API_KEY: ""`).
+* **Edge-Enforced API Gateway Authorizer**: All management requests (`GET /incidents`, `POST /incidents/{incident_id}/approve`, `POST /tenants`) transmit `Authorization: Bearer <id_token>`. The central REST API enforces a native `CognitoAuthorizer` mapped directly to the User Pool ARN, dropping unauthenticated callers at the API Gateway edge before touching Lambda.
+* **Strict CORS Boundary**: Scoped CORS headers (`AllowedOrigin: "https://main.d1hndpgpwb40h8.amplifyapp.com"`) prevent unauthorized cross-origin browser requests.
 
-### Frontend Configuration
-1. **Retrieve API Key Value**:
+### Frontend Configuration & Deployment
+1. **Automated Zero-Secrets Sync**:
+   The deploy script automatically writes the live endpoints and Cognito Client ID to `frontend/config.js` during deployment:
    ```bash
-   aws apigateway get-api-key --api-key <ControlApiKeyId> --include-value
+   python scripts/deploy_amplify.py
    ```
-2. **Setup Local Config**:
+2. **Local Development Configuration**:
    - Copy `frontend/config.example.js` to `frontend/config.js`:
      ```bash
      cp frontend/config.example.js frontend/config.js
      ```
-   - Set `CONTROL_API_BASE`, `API_KEY`, and `TARGET_API_URL`.
-   - The browser frontend automatically passes the `x-api-key` header on all fetch requests (`GET /incidents` and `POST /incidents/{incident_id}/approve`).
+   - Populate `CONTROL_API_BASE` (`https://noxx10mrwa.execute-api.ap-south-1.amazonaws.com/prod`), `COGNITO_USER_POOL_ID`, and `COGNITO_CLIENT_ID`.
+   - The browser frontend automatically retrieves and injects the active Cognito ID token into the `Authorization` header for all API operations.
 
 
 ---
